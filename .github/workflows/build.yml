@@ -5,17 +5,15 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
 
 jobs:
   build-linux:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        submodules: false  # ImGui is vendored
 
     - name: Install dependencies
       run: |
@@ -43,36 +41,10 @@ jobs:
         ls -la build/luma_client.so
         file build/luma_client.so
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: luma_client-${{ github.sha }}
-        path: build/luma_client.so
-        retention-days: 30
-
-    - name: Upload luma_client.so to GitHub Release 'Release'
+    # Upload to release
+    - name: Create Release and Upload .so
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: Release
         files: build/luma_client.so
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Show success
-      run: |
-        echo "🎉 Luma Client built and uploaded successfully!"
-        echo "📱 Copy build/luma_client.so to ~/.local/share/mcpelauncher/mods/"
-
-  notify:
-    needs: build-linux
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-    - name: Notify result
-      uses: 8398a7/action-slack@v3
-      with:
-        status: ${{ job.status }}
-        channel: '#luma-client'
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      if: env.SLACK_WEBHOOK_URL != ''
