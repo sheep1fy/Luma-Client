@@ -22,6 +22,16 @@ jobs:
         sudo apt update
         sudo apt install -y cmake ninja-build gcc g++ libegl1-mesa-dev libgles2-mesa-dev
 
+    - name: Setup Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r25c
+        add-to-path: false
+    
+    - name: Set NDK environment variables
+      run: |
+        echo "ANDROID_NDK_HOME=${{ steps.setup-ndk.outputs.ndk-path }}" >> $GITHUB_ENV
+
     - name: Create build directory
       run: mkdir build
 
