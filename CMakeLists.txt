@@ -11,7 +11,7 @@ add_library(luma_client SHARED
     src/luma_gui.cpp
     src/luma_hud_editor.cpp
     src/luma_game_api.cpp
-    src/luma_config.cpp            # when you implement it
+    src/luma_config.cpp
     src/modules/luma_fps_module.cpp
     src/modules/luma_cps_module.cpp
     src/modules/luma_keystrokes_module.cpp
@@ -25,6 +25,7 @@ add_library(luma_client SHARED
     imgui/imgui_widgets.cpp
     imgui/backends/imgui_impl_opengl3.cpp
     imgui/backends/imgui_impl_android.cpp
+    apis/bedrock_1_21_30.cpp
 )
 
 target_include_directories(luma_client PRIVATE
