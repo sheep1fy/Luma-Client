@@ -30,13 +30,12 @@ add_library(luma_client SHARED
     # Bedrock 1.21.30 API
     apis/bedrock_1_21_30.cpp
     
-    # Dear ImGui (exactly these 9 files)
+    # Dear ImGui
     imgui/imgui.cpp
     imgui/imgui_draw.cpp
     imgui/imgui_tables.cpp
     imgui/imgui_widgets.cpp
     imgui/backends/imgui_impl_opengl3.cpp
-    imgui/backends/imgui_impl_android.cpp
 )
 
 # Include directories
@@ -46,25 +45,6 @@ target_include_directories(luma_client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends
     ${CMAKE_CURRENT_SOURCE_DIR}/apis
 )
-
-# Add Android NDK headers only for the Android backend file
-if(DEFINED ENV{ANDROID_NDK_HOME})
-    set_source_files_properties(
-        imgui/backends/imgui_impl_android.cpp
-        PROPERTIES COMPILE_FLAGS 
-        "-I$ENV{ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include"
-    )
-    message(STATUS "Android NDK found at: $ENV{ANDROID_NDK_HOME}")
-elseif(DEFINED ENV{ANDROID_NDK})
-    set_source_files_properties(
-        imgui/backends/imgui_impl_android.cpp
-        PROPERTIES COMPILE_FLAGS 
-        "-I$ENV{ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include"
-    )
-    message(STATUS "Android NDK found at: $ENV{ANDROID_NDK}")
-else()
-    message(WARNING "Android NDK not found - imgui_impl_android.cpp may fail to compile")
-endif()
 
 # Link libraries (MCPelauncher + Android)
 target_link_libraries(luma_client PRIVATE
