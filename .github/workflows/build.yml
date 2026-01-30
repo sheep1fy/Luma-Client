@@ -42,20 +42,37 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /tmp/dobby-install
-        key: dobby-x86_64-r26b-v3
+        key: dobby-x86_64-r26b-patched-v4
     
-    - name: 🪝 Build Dobby for x86_64
+    - name: 🪝 Clone and Patch Dobby for x86_64
       if: steps.cache-dobby.outputs.cache-hit != 'true'
       run: |
         # Clone Dobby
         git clone --depth 1 https://github.com/jmpews/Dobby.git /tmp/dobby-src
+        cd /tmp/dobby-src
         
-        # Create build directory
+        # Patch CMakeLists.txt to exclude ARM64 assembly for x86_64 builds
+        cat >> source/TrampolineBridge/ClosureTrampolineBridge/CMakeLists.txt << 'EOF'
+        
+        # Exclude ARM64 assembly when building for x86_64
+        if(PROCESSOR MATCHES "x86_64")
+          list(REMOVE_ITEM closure_trampoline_files
+            ${CMAKE_CURRENT_SOURCE_DIR}/arm64/closure_bridge_arm64.asm
+            ${CMAKE_CURRENT_SOURCE_DIR}/arm64/closure_trampoline_arm64.asm
+          )
+          message(STATUS "Excluded ARM64 assembly files for x86_64 build")
+        endif()
+        EOF
+        
+        echo "✅ Dobby patched for x86_64"
+    
+    - name: 🔨 Build Dobby for x86_64
+      if: steps.cache-dobby.outputs.cache-hit != 'true'
+      run: |
         mkdir -p /tmp/dobby-build
         cd /tmp/dobby-build
         
-        # Configure Dobby for x86_64 ONLY
-        # CRITICAL: We must set the correct target architecture
+        # Configure
         cmake /tmp/dobby-src \
           -G Ninja \
           -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
@@ -64,131 +81,66 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/tmp/dobby-install \
           -DDOBBY_DEBUG=OFF \
-          -DDOBBY_GENERATE_SHARED=ON \
-          -DPlugin.SymbolResolver=ON \
-          -DPlugin.Android.BionicLinkerRestriction=ON
+          -DPlugin.SymbolResolver=ON
         
         # Build
         ninja -j$(nproc)
         
-        # Install to /tmp/dobby-install
+        # Install
         ninja install
         
-        # Verify
-        echo "=== Dobby Build Complete ==="
-        ls -la /tmp/dobby-install/
-        find /tmp/dobby-install -name "*.so" -o -name "*.a"
+        echo "✅ Dobby built and installed"
+        ls -la /tmp/dobby-install/lib/
     
     - name: 📋 Verify Project Files
       run: |
-        echo "=== Project Structure ==="
-        ls -la
+        echo "=== CMakeLists.txt ==="
+        head -30 CMakeLists.txt
         
         echo ""
         echo "=== ImGui Files ==="
         ls -la imgui/ 2>/dev/null || echo "⚠ imgui/ not found"
         
         echo ""
-        echo "=== ImGui Backends ==="
-        ls -la imgui/backends/ 2>/dev/null || echo "⚠ imgui/backends/ not found"
-        
-        echo ""
         echo "=== Source Files ==="
         ls -la src/
-        
-        echo ""
-        echo "=== CMakeLists.txt Preview ==="
-        head -50 CMakeLists.txt
     
     - name: ⚙️ Configure Luma Client
       run: |
         mkdir -p build
         cd build
         
-        # Configure with proper paths to Dobby
         cmake .. \
           -G Ninja \
           -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
           -DANDROID_ABI=x86_64 \
           -DANDROID_PLATFORM=android-24 \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_FIND_ROOT_PATH="/tmp/dobby-install" \
           -DCMAKE_PREFIX_PATH="/tmp/dobby-install" \
-          -DCMAKE_VERBOSE_MAKEFILE=ON
-    
-    - name: 🔍 Debug CMake Failure
-      if: failure()
-      run: |
-        echo "=== CMake Failed ==="
-        echo ""
-        echo "=== CMake Cache ==="
-        cat build/CMakeCache.txt 2>/dev/null || echo "No cache"
-        
-        echo ""
-        echo "=== CMake Error Log ==="
-        cat build/CMakeFiles/CMakeError.log 2>/dev/null || echo "No error log"
-        
-        echo ""
-        echo "=== CMake Output Log ==="
-        cat build/CMakeFiles/CMakeOutput.log 2>/dev/null || echo "No output log"
-        
-        echo ""
-        echo "=== Available Dobby Files ==="
-        find /tmp/dobby-install -type f 2>/dev/null || echo "Dobby install not found"
+          -DCMAKE_FIND_ROOT_PATH="/tmp/dobby-install"
     
     - name: 🔨 Build Luma Client
       run: |
         cd build
         ninja -v -j$(nproc)
     
-    - name: 🔍 Debug Build Failure
-      if: failure()
-      run: |
-        echo "=== Build Failed ==="
-        echo ""
-        echo "=== Build Directory ==="
-        ls -la build/ 2>/dev/null || echo "Build dir not found"
-        
-        echo ""
-        echo "=== Last 50 lines of build output ==="
-        tail -n 50 build/.ninja_log 2>/dev/null || echo "No ninja log"
-        
-        echo ""
-        echo "=== Check for output file ==="
-        find build -name "*.so" 2>/dev/null || echo "No .so files found"
-    
-    - name: ✅ Verify Build Output
+    - name: ✅ Verify Build
       run: |
         if [ ! -f "build/libluma_client.so" ]; then
-          echo "❌ ERROR: libluma_client.so not found!"
-          echo ""
-          echo "Build directory contents:"
-          find build -type f
+          echo "❌ Build failed"
+          find build -name "*.so" || echo "No .so files"
           exit 1
         fi
         
-        echo "✅ Build Successful!"
-        echo ""
-        echo "File: build/libluma_client.so"
+        echo "✅ Build successful!"
         echo "Size: $(du -h build/libluma_client.so | cut -f1)"
-        
-        echo ""
-        echo "=== File Type ==="
         file build/libluma_client.so
-        
-        echo ""
-        echo "=== Symbols ==="
-        nm -D build/libluma_client.so | grep -E "init_luma|toggle_luma|run_luma" || echo "⚠ Expected symbols not found"
-        
-        echo ""
-        echo "=== Dependencies ==="
-        readelf -d build/libluma_client.so | grep NEEDED
+        nm -D build/libluma_client.so | grep -E "init_luma|toggle_luma|run_luma"
     
     - name: 🗜️ Strip Binary
       run: |
-        echo "Before: $(du -h build/libluma_client.so | cut -f1)"
         ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip build/libluma_client.so
-        echo "After: $(du -h build/libluma_client.so | cut -f1)"
+        echo "Final size: $(du -h build/libluma_client.so | cut -f1)"
     
     - name: 📤 Upload Artifact
       uses: actions/upload-artifact@v4
@@ -196,26 +148,13 @@ jobs:
         name: luma-client-x86_64
         path: build/libluma_client.so
         retention-days: 30
-        if-no-files-found: error
-    
-    - name: 🔐 Generate Checksum
-      run: |
-        cd build
-        sha256sum libluma_client.so > libluma_client.so.sha256
-        cat libluma_client.so.sha256
-    
-    - name: 📤 Upload Checksum
-      uses: actions/upload-artifact@v4
-      with:
-        name: luma-client-x86_64-checksum
-        path: build/libluma_client.so.sha256
 
   build-arm64:
     name: Build ARM64
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout Repository
+    - name: 📥 Checkout
       uses: actions/checkout@v4
       with:
         submodules: recursive
@@ -225,7 +164,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake ninja-build build-essential git
     
-    - name: 📦 Setup Android NDK r26b
+    - name: 📦 Setup NDK
       uses: nttld/setup-ndk@v1
       id: setup-ndk
       with:
@@ -237,7 +176,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /tmp/dobby-install
-        key: dobby-arm64-r26b-v3
+        key: dobby-arm64-r26b-v4
     
     - name: 🪝 Build Dobby for ARM64
       if: steps.cache-dobby.outputs.cache-hit != 'true'
@@ -246,7 +185,6 @@ jobs:
         mkdir -p /tmp/dobby-build
         cd /tmp/dobby-build
         
-        # Configure for ARM64
         cmake /tmp/dobby-src \
           -G Ninja \
           -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
@@ -254,8 +192,7 @@ jobs:
           -DANDROID_PLATFORM=android-24 \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/tmp/dobby-install \
-          -DDOBBY_DEBUG=OFF \
-          -DDOBBY_GENERATE_SHARED=ON
+          -DDOBBY_DEBUG=OFF
         
         ninja -j$(nproc)
         ninja install
@@ -271,13 +208,12 @@ jobs:
           -DANDROID_ABI=arm64-v8a \
           -DANDROID_PLATFORM=android-24 \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_FIND_ROOT_PATH="/tmp/dobby-install" \
           -DCMAKE_PREFIX_PATH="/tmp/dobby-install"
     
     - name: 🔨 Build
       run: |
         cd build
-        ninja -v -j$(nproc)
+        ninja -j$(nproc)
     
     - name: ✅ Verify
       run: |
@@ -306,59 +242,31 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
-    - name: 📥 Download x86_64
+    - name: 📥 Download Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: luma-client-x86_64
-        path: ./release
-    
-    - name: 📥 Download ARM64
-      uses: actions/download-artifact@v4
-      with:
-        name: luma-client-arm64
-        path: ./release-arm64
-    
-    - name: 📥 Download Checksum
-      uses: actions/download-artifact@v4
-      with:
-        name: luma-client-x86_64-checksum
-        path: ./release
+        path: ./artifacts
     
     - name: 📦 Prepare Release
       run: |
+        mkdir release
+        cp artifacts/luma-client-x86_64/libluma_client.so release/luma-client-x86_64.so
+        cp artifacts/luma-client-arm64/libluma_client.so release/luma-client-arm64.so
+        
         cd release
+        sha256sum luma-client-x86_64.so > checksums.txt
+        sha256sum luma-client-arm64.so >> checksums.txt
         
-        # Rename
-        cp libluma_client.so luma-client-x86_64.so
-        cp ../release-arm64/libluma_client.so luma-client-arm64.so
-        
-        # Checksums
-        sha256sum luma-client-arm64.so > luma-client-arm64.so.sha256
-        
-        # Install guide
         cat > INSTALL.md << 'EOF'
-        # Luma Client Installation
+        # Installation
         
-        ## For mcpelauncher (Linux x86_64)
-        
+        ## Linux (mcpelauncher)
         ```bash
         wget https://github.com/sheep1fy/Luma-Client/releases/latest/download/luma-client-x86_64.so
-        mkdir -p ~/.local/share/mcpelauncher/mods
         mv luma-client-x86_64.so ~/.local/share/mcpelauncher/mods/libluma_client.so
-        mcpelauncher-client
         ```
         
-        Press **K** in-game to open the menu.
-        
-        ## For Android (ARM64)
-        
-        Download `luma-client-arm64.so` and place in your mods directory.
-        
-        ## Verify
-        
-        ```bash
-        sha256sum -c luma-client-x86_64.so.sha256
-        ```
+        Press **K** in-game to open menu.
         EOF
         
         ls -lh
@@ -369,39 +277,18 @@ jobs:
         files: |
           release/luma-client-x86_64.so
           release/luma-client-arm64.so
-          release/libluma_client.so.sha256
-          release/luma-client-arm64.so.sha256
+          release/checksums.txt
           release/INSTALL.md
         body: |
-          ## 🎮 Luma Client ${{ github.ref_name }}
+          ## Luma Client ${{ github.ref_name }}
           
-          ### 📥 Quick Install (mcpelauncher)
-          
+          ### Quick Install
           ```bash
           wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/luma-client-x86_64.so
           mv luma-client-x86_64.so ~/.local/share/mcpelauncher/mods/libluma_client.so
           ```
           
-          ### ✨ Features
-          
-          - Modern glassmorphism UI with cyan accent
-          - 14+ utility modules (ToggleSprint, Zoom, FPS, CPS, Coordinates, etc.)
-          - Customizable HUD elements
-          - Zero performance impact
-          - Press **K** to open menu
-          
-          ### 🔐 Verify Download
-          
-          ```bash
-          sha256sum -c libluma_client.so.sha256
-          ```
-          
-          ### 📋 Included Files
-          
-          - `luma-client-x86_64.so` - For mcpelauncher on Linux
-          - `luma-client-arm64.so` - For Android ARM64 devices
-          - `*.sha256` - Checksums for verification
-          - `INSTALL.md` - Detailed installation instructions
+          Press **K** to open menu.
         draft: false
         prerelease: false
       env:
