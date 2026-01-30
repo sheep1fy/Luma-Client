@@ -49,7 +49,6 @@ target_include_directories(luma_client PRIVATE
 # Link libraries (MCPelauncher + Linux)
 target_link_libraries(luma_client PRIVATE
     EGL
-    GLESv2
     dl          # dlsym for hooking
     pthread     # threading
 )
