@@ -15,7 +15,7 @@ static auto LumaAutoSprintTick = [](float) {
         // Toggle sprint (Ctrl key)
         ImGuiIO& io = ImGui::GetIO();
         static bool prev = false;
-        bool pressed = io.KeysDown[ImGuiKey_LeftCtrl];
+        bool pressed = io.KeysDownRaw[ImGuiKey_LeftCtrl];
         if (pressed && !prev) g_toggleSprint = !g_toggleSprint;
         prev = pressed;
         LumaSetSprintKeyDown(g_toggleSprint);
