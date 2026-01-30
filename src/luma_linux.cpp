@@ -6,7 +6,6 @@
 
 #include "imgui.h"
 #include "backends/imgui_impl_opengl3.h"
-#include "backends/imgui_impl_android.h"
 
 static EGLBoolean (*LumaOrigEglSwapBuffers)(EGLDisplay, EGLSurface) = nullptr;
 static bool g_lumaImguiInitialized = false;
@@ -21,7 +20,6 @@ static void LumaImguiInit() {
     io.IniFilename = nullptr;
 
     ImGui::StyleColorsDark();
-    ImGui_ImplAndroid_Init(nullptr);
     ImGui_ImplOpenGL3_Init("#version 100");
 
     g_lumaImguiInitialized = true;
@@ -39,7 +37,6 @@ static EGLBoolean LumaHookEglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
     LumaOnTick(dt);
 
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplAndroid_NewFrame();
     ImGui::NewFrame();
 
     LumaOnRender();
