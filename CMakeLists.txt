@@ -1,20 +1,36 @@
-# Update the minimum version to stop the warnings
 cmake_minimum_required(VERSION 3.10)
-
 project(luma_client)
 
-# Include directories (ensure these match your folder structure)
-include_directories(src)
-include_directories(include)
+set(CMAKE_CXX_STANDARD 17)
 
-# Define the source files you actually have
-set(SOURCE_FILES
-    src/luma_linux.c
-    src/luma_module_manager.cpp
+# 1. Define Paths
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
+set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# 2. Include Directories
+include_directories(${SRC_DIR})
+include_directories(${IMGUI_DIR})
+include_directories(${IMGUI_DIR}/backends)
+
+# 3. Collect ImGui Sources (Required to fix your "file not found" error)
+set(IMGUI_SOURCES
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-# Tell CMake to build the library using YOUR files
-add_library(luma_client SHARED ${SOURCE_FILES})
+# 4. Define Luma Sources
+set(LUMA_SOURCES
+    ${SRC_DIR}/luma_linux.c
+    ${SRC_DIR}/luma_module_manager.cpp
+)
 
-# Link necessary libraries (GLESv3 for rendering, Log for Android logging)
+# 5. Build Shared Library
+add_library(luma_client SHARED ${LUMA_SOURCES} ${IMGUI_SOURCES})
+
+# 6. Link Libraries
+# GLESv3 is used for mobile/bedrock rendering
 target_link_libraries(luma_client GLESv3 log)
