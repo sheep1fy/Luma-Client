@@ -3,14 +3,9 @@
 #include "luma_config.h"
 #include "imgui.h"
 
-bool LumaHudEditMode = false;
-
-static bool g_guiOpen = false;
+static bool showLumaGUI = false;
 
 void LumaToggleGUI() {
-    ImGuiIO& io = ImGui::GetIO();
-    
-    // Check if Right Shift + F3 is pressed
     bool shift = ImGui::IsKeyDown(ImGuiKey_RightShift);
     bool f3 = ImGui::IsKeyPressed(ImGuiKey_F3, false);
     
@@ -18,6 +13,8 @@ void LumaToggleGUI() {
         showLumaGUI = !showLumaGUI;
     }
 }
+
+// Rest of your GUI code...
 
 void LumaGUIRender() {
     LumaToggleGUI();
