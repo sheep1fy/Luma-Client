@@ -50,10 +50,14 @@ target_include_directories(luma_client PRIVATE
 target_link_libraries(luma_client PRIVATE
     EGL
     dl
-    pthread  
-    static-libstdc++ -static-libgcc
+    pthread 
+    log
 )
 
+target_link_options(luma_client PRIVATE
+    -static-libstdc++
+    -static-libgcc
+    )
 # Compiler optimizations
 target_compile_definitions(luma_client PRIVATE
     IMGUI_IMPL_OPENGL_ES2
