@@ -14,9 +14,10 @@ target_compile_options(luma_client PRIVATE
     -Wall -Wextra
 )
 
-# FIXED: NO -llog! Just dl + z
+# NO -llog! Just Linux basics
 target_link_libraries(luma_client PRIVATE dl z)
 
+# WEB COMPATIBLE - FLAT OUTPUT!
 set_target_properties(luma_client PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Luma Client/1.0.1/x86_64"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )
