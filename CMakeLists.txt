@@ -47,15 +47,19 @@ target_include_directories(luma_client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/apis
 )
 
-# Add Android NDK headers if available
+# Add Android NDK headers only for the Android backend file
 if(DEFINED ENV{ANDROID_NDK_HOME})
-    target_include_directories(luma_client PRIVATE
-        $ENV{ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
+    set_source_files_properties(
+        imgui/backends/imgui_impl_android.cpp
+        PROPERTIES COMPILE_FLAGS 
+        "-I$ENV{ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include"
     )
     message(STATUS "Android NDK found at: $ENV{ANDROID_NDK_HOME}")
 elseif(DEFINED ENV{ANDROID_NDK})
-    target_include_directories(luma_client PRIVATE
-        $ENV{ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
+    set_source_files_properties(
+        imgui/backends/imgui_impl_android.cpp
+        PROPERTIES COMPILE_FLAGS 
+        "-I$ENV{ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include"
     )
     message(STATUS "Android NDK found at: $ENV{ANDROID_NDK}")
 else()
