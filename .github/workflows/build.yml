@@ -1,4 +1,4 @@
-name: Luma Client CI/CD
+name: Luma Client CI/CD (x86_64 Only)
 
 on:
   push:
@@ -10,20 +10,12 @@ on:
 
 jobs:
   build:
-    name: Build Luma (${{ matrix.abi }})
+    name: Build Luma (x86_64)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - abi: x86_64
-            arch: x86_64
-          - abi: arm64-v8a
-            arch: arm64
 
     env:
       ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r26b
-      DOBBY_INSTALL_DIR: ${{ github.workspace }}/dobby-install-${{ matrix.abi }}
+      DOBBY_INSTALL_DIR: ${{ github.workspace }}/dobby-install-x86_64
 
     steps:
       - name: Checkout Luma Client
@@ -32,9 +24,8 @@ jobs:
           submodules: recursive
 
       - name: Setup Android NDK r26b
-        id: setup-ndk
         run: |
-          wget https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
+          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
           unzip -q android-ndk-r26b-linux.zip
           echo "ANDROID_NDK_HOME=${{ github.workspace }}/android-ndk-r26b" >> $GITHUB_ENV
 
@@ -43,37 +34,31 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.DOBBY_INSTALL_DIR }}
-          key: dobby-${{ matrix.abi }}-r26b-v2
+          key: dobby-x86_64-r26b-v3
 
-      - name: Build & Patch Dobby (If not cached)
+      - name: Build & Patch Dobby
         if: steps.cache-dobby.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 https://github.com/jmpews/Dobby.git dobby-src
+          cd dobby-src
           
-          # CRITICAL PATCH: Remove ARM64 assembly from x86_64 build list
-          if [ "${{ matrix.abi }}" == "x86_64" ]; then
-            sed -i '/arm64\/closure_bridge_arm64.asm/d' dobby-src/source/TrampolineBridge/ClosureTrampolineBridge/CMakeLists.txt
-            sed -i '/arm64\/closure_trampoline_arm64.asm/d' dobby-src/source/TrampolineBridge/ClosureTrampolineBridge/CMakeLists.txt
-            echo "Successfully patched Dobby CMake for x86_64"
-          fi
+          # Find all CMakeLists.txt that might include ARM64 assembly and strip them
+          # This is a much more robust "human-made" way to ensure x86_64 compatibility
+          find source -name "CMakeLists.txt" -exec sed -i '/arm64/d' {} +
+          find source -name "CMakeLists.txt" -exec sed -i '/ARM64/d' {} +
+          
+          echo "Dobby CMake files patched to exclude ARM64 logic."
 
-          mkdir -p dobby-src/build && cd dobby-src/build
+          mkdir -p build && cd build
           cmake .. \
             -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=${{ matrix.abi }} \
+            -DANDROID_ABI=x86_64 \
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
             -DDOBBY_DEBUG=OFF \
             -DCMAKE_INSTALL_PREFIX=${{ env.DOBBY_INSTALL_DIR }}
           ninja install
-
-      - name: Debug Project Structure
-        run: |
-          echo "Listing source files..."
-          ls -R src/
-          echo "Dobby Install Dir:"
-          ls -R ${{ env.DOBBY_INSTALL_DIR }}
 
       - name: Configure Luma Client
         run: |
@@ -81,7 +66,7 @@ jobs:
           cmake .. \
             -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=${{ matrix.abi }} \
+            -DANDROID_ABI=x86_64 \
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
             -Ddobby_DIR=${{ env.DOBBY_INSTALL_DIR }}/lib/cmake/dobby \
@@ -91,23 +76,13 @@ jobs:
         run: |
           cd build
           ninja
-          # Strip symbols to reduce size
           ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip libluma_client.so
 
-      - name: Verify Binary
-        run: |
-          FILE_PATH="build/libluma_client.so"
-          echo "Checking dependencies for $FILE_PATH"
-          ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf -d $FILE_PATH
-          sha256sum $FILE_PATH > $FILE_PATH.sha256
-
-      - name: Upload Artifacts
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: luma-client-${{ matrix.abi }}
-          path: |
-            build/libluma_client.so
-            build/libluma_client.so.sha256
+          name: luma-client-x86_64
+          path: build/libluma_client.so
 
   release:
     name: Create GitHub Release
@@ -115,30 +90,16 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - name: Download x86_64 Artifact
+      - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
           name: luma-client-x86_64
-          path: release/x86_64
-
-      - name: Download ARM64 Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: luma-client-arm64-v8a
-          path: release/arm64
-
-      - name: Prepare Release Files
-        run: |
-          mv release/x86_64/libluma_client.so luma_x86_64.so
-          mv release/arm64/libluma_client.so luma_arm64.so
+          path: .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            luma_x86_64.so
-            luma_arm64.so
-          body: "Official Luma Client Build for Minecraft Bedrock Linux & Android."
+          files: libluma_client.so
+          body: "Official Luma Client Build for Minecraft Bedrock (x86_64 Linux)."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
