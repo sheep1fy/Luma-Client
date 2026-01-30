@@ -50,14 +50,15 @@ target_include_directories(luma_client PRIVATE
 target_link_libraries(luma_client PRIVATE
     EGL
     dl
-    pthread 
+    pthread
+    m   # Explicitly link math library
 )
 
-# Static linking for libstdc++, libgcc, and libm
+# Link options to statically link stdc++, gcc, and math lib
 target_link_options(luma_client PRIVATE
     -static-libstdc++
     -static-libgcc
-    "-Wl,-Bstatic" "-lm" "-Wl,-Bdynamic"
+    -Wl,-Bstatic -lm -Wl,-Bdynamic
 )
 
 # Compiler optimizations and definitions
@@ -66,15 +67,12 @@ target_compile_definitions(luma_client PRIVATE
     IMGUI_DEFINE_MATH_OPERATORS
 )
 
-# Release build optimizations and strip symbols
+# Release build optimizations
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(luma_client PRIVATE -O3 -DNDEBUG)
-    add_custom_command(TARGET luma_client POST_BUILD
-        COMMAND strip --strip-unneeded ${CMAKE_BINARY_DIR}/luma_client.so
-    )
 endif()
 
-# Strip 'lib' prefix and set output directory
+# Strip symbols for smaller .so and remove 'lib' prefix
 set_target_properties(luma_client PROPERTIES
     OUTPUT_NAME "luma_client"
     PREFIX ""
