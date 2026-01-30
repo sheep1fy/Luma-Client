@@ -1,48 +1,27 @@
+#include "luma_module_manager.hpp"
 #include <vector>
-#include <string>
 #include <android/log.h>
 
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "LUMA", __VA_ARGS__)
-
-class Module {
-public:
-    std::string name;
-    bool enabled = false;
-    virtual void onTick() = 0; // Logic that runs every frame
+struct Module {
+    const char* name;
+    bool enabled;
 };
 
-// --- Legit Module: ToggleSprint ---
-class ToggleSprint : public Module {
-public:
-    ToggleSprint() { name = "ToggleSprint"; }
-    void onTick() override {
-        if (enabled) {
-            // Placeholder: Access GameInstance->LocalPlayer and set isSprinting
-        }
-    }
-};
+std::vector<Module> modules;
+bool menu_open = false;
 
-// --- Module Manager ---
-class ModuleManager {
-public:
-    std::vector<Module*> modules;
-    bool menuOpen = false;
+extern "C" void init_luma_manager() {
+    modules.push_back({"ToggleSprint", false});
+    modules.push_back({"CPS Counter", true});
+    modules.push_back({"Keystrokes", true});
+}
 
-    void init() {
-        modules.push_back(new ToggleSprint());
-        // Add Keystrokes, CPS Counter, etc. here
-    }
+extern "C" void toggle_luma_menu() {
+    menu_open = !menu_open;
+    __android_log_print(ANDROID_LOG_INFO, "LUMA", "Menu Toggled: %s", menu_open ? "ON" : "OFF");
+}
 
-    void toggleMenu() {
-        menuOpen = !menuOpen;
-        LOGI("Menu status: %s", menuOpen ? "Visible" : "Hidden");
-    }
-
-    void runModules() {
-        for (auto mod : modules) {
-            if (mod->enabled) mod->onTick();
-        }
-    }
-};
-
-ModuleManager g_ModuleManager;
+extern "C" void run_luma_tick() {
+    // This runs every frame. 
+    // If ToggleSprint is enabled, we apply the sprint logic here.
+}
