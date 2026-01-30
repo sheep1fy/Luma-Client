@@ -17,10 +17,10 @@ static auto LumaKeysRender = []() {
         dl->AddText(p + (sz-tsz)*0.5f, IM_COL32(255,255,255,255), label);
     };
     
-    bool w = io.KeysDown[ImGuiKey_W];
-    bool a = io.KeysDown[ImGuiKey_A];
-    bool s = io.KeysDown[ImGuiKey_S];
-    bool d = io.KeysDown[ImGuiKey_D];
+    bool w = io.KeysDownRaw[ImGuiKey_W];
+    bool a = io.KeysDownRaw[ImGuiKey_A];
+    bool s = io.KeysDownRaw[ImGuiKey_S];
+    bool d = io.KeysDownRaw[ImGuiKey_D];
     
     drawKey(pos, "W", w);
     drawKey(pos + ImVec2(0, sz.y+pad), "A", a);
