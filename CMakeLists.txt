@@ -46,13 +46,12 @@ target_include_directories(luma_client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/apis
 )
 
-# Link libraries (MCPelauncher + Android)
+# Link libraries (MCPelauncher + Linux)
 target_link_libraries(luma_client PRIVATE
     EGL
     GLESv2
     dl          # dlsym for hooking
     pthread     # threading
-    log         # Android logging
 )
 
 # Compiler optimizations
