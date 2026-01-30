@@ -5,52 +5,39 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
-  build-linux:
+  build-android:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        submodules: false  # ImGui is vendored
 
-    - name: Install dependencies
+    - name: Install Build Tools
       run: |
         sudo apt update
-        sudo apt install -y cmake ninja-build gcc g++ libegl1-mesa-dev libgles2-mesa-dev
+        sudo apt install -y cmake ninja-build
 
-    - name: Create build directory
-      run: mkdir build
+    - name: Setup Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r26b
 
-    - name: Configure CMake
+    - name: Build with Android Glue
       run: |
+        mkdir build
         cd build
         cmake .. -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_CXX_STANDARD=20 \
-          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=x86_64 \
+          -DANDROID_PLATFORM=android-24 \
+          -DCMAKE_BUILD_TYPE=Release
+        ninja
 
-    - name: Build Luma Client
-      run: |
-        cd build
-        ninja -j3
-
-    - name: Verify build
-      run: |
-        ls -la build/luma_client.so
-        file build/luma_client.so
-
-    - name: Upload artifact
+    - name: Upload Mod File
       uses: actions/upload-artifact@v4
       with:
-        name: luma_client-${{ github.sha }}
+        name: luma_client-android-x86_64
         path: build/luma_client.so
-        retention-days: 30
-
-    - name: Show success
-      run: |
-        echo "🎉 Luma Client built successfully!"
-        echo "📱 Copy build/luma_client.so to ~/.local/share/mcpelauncher/mods/"
