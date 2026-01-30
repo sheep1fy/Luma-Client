@@ -14,11 +14,9 @@ void LumaToggleGUI() {
     }
 }
 
-// Rest of your GUI code...
-
 void LumaGUIRender() {
     LumaToggleGUI();
-    if (!g_guiOpen) return;
+    if (!showLumaGUI) return;
 
     ImGui::Begin("Luma Client v1.21.30");
     
