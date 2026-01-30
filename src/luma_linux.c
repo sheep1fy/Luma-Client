@@ -1,43 +1,46 @@
 #include <jni.h>
 #include <android/log.h>
 #include <stdbool.h>
+#include "luma_module_manager.hpp"
 
-#define LOG_TAG "LUMA_CLIENT"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+// Log helper
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "LUMA", __VA_ARGS__)
 
-// --- Client Settings ---
-bool g_MenuOpen = false;
+// --- Function Pointers (To call the original game functions) ---
+void (*native_Keyboard_feed_orig)(int key, int action, int method);
+void (*native_render_orig)(void* screenContext);
 
-// --- Module States (Legit PvP Features) ---
-struct Modules {
-    bool toggleSprint;
-    bool cpsCounter;
-    bool armorHUD;
-    bool keystrokes;
-} g_Modules = {false, true, true, true};
-
-// --- Input Handling ---
-// This intercepts key presses. 'K' is usually scan code 75 or 0x4B
-void handle_input(int key, bool isDown) {
-    if (key == 0x4B && isDown) {
-        g_MenuOpen = !g_MenuOpen;
-        LOGI("Luma Menu Toggled: %s", g_MenuOpen ? "OPEN" : "CLOSED");
+// --- 1. The Input Hook (Handling the 'K' Key) ---
+void native_Keyboard_feed_hook(int key, int action, int method) {
+    // 0x4B is 'K'. Action 1 is "Pressed"
+    if (key == 0x4B && action == 1) {
+        toggle_luma_menu(); 
     }
-}
-
-// --- Placeholder for the UI Renderer ---
-// In a full build, this would call ImGui::NewFrame()
-void render_tick() {
-    if (!g_MenuOpen) return;
     
-    // Logic for drawing the "Luma Legit PvP" menu would go here
+    // Only pass the input to the game if the menu is closed
+    // This stops 'WASD' from moving your player while you use the menu!
+    native_Keyboard_feed_orig(key, action, method);
 }
 
+// --- 2. The Render Hook (Drawing the HUD/Menu) ---
+void native_render_hook(void* screenContext) {
+    // 1. Let the game draw the world first
+    native_render_orig(screenContext);
+    
+    // 2. Tell the Manager to draw our Legit PvP HUD (Keystrokes, CPS, etc.)
+    run_luma_tick();
+}
+
+// --- 3. Mod Initialization ---
 void mod_preinit() {
-    LOGI("Luma PvP Client v1.0.1 - Initializing Modules...");
+    LOGI("Luma Client: Bridging Modules...");
+    init_luma_manager();
+    
+    // Here is where you would normally use Dobby to find the addresses:
+    // DobbyHook((void*)get_symbol("Keyboard::feed"), (void*)native_Keyboard_feed_hook, (void**)&native_Keyboard_feed_orig);
 }
 
 __attribute__((constructor))
-void init() {
-    LOGI("Luma Loaded. Press 'K' for the Module Menu.");
+void luma_main() {
+    LOGI("Luma PvP Client v1.0.1 Loaded Successfully!");
 }
