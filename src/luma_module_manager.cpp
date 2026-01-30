@@ -1,33 +1,48 @@
-#include <GLES3/gl3.h>
-#include "imgui.h"
-#include "imgui_impl_opengl3.h"
+#include <vector>
+#include <string>
+#include <android/log.h>
 
-// --- Module Structure ---
-struct Module {
-    const char* name;
-    bool enabled;
-    void (*onUpdate)(); // Logic run every frame
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "LUMA", __VA_ARGS__)
+
+class Module {
+public:
+    std::string name;
+    bool enabled = false;
+    virtual void onTick() = 0; // Logic that runs every frame
 };
 
-// --- Legit Feature: ToggleSprint ---
-void updateToggleSprint() {
-    // Logic: If moving, set the game's internal 'isSprinting' flag to true
-}
-
-Module modules[] = {
-    {"ToggleSprint", false, updateToggleSprint},
-    {"Keystrokes", true, nullptr},
-    {"CPS Counter", true, nullptr}
-};
-
-// --- The 'K' Key UI ---
-void RenderMenu() {
-    ImGui::Begin("Luma PvP Client", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::Text("Press 'K' to hide/show");
-    ImGui::Separator();
-
-    for (int i = 0; i < 3; i++) {
-        ImGui::Checkbox(modules[i].name, &modules[i].enabled);
+// --- Legit Module: ToggleSprint ---
+class ToggleSprint : public Module {
+public:
+    ToggleSprint() { name = "ToggleSprint"; }
+    void onTick() override {
+        if (enabled) {
+            // Placeholder: Access GameInstance->LocalPlayer and set isSprinting
+        }
     }
-    ImGui::End();
-}
+};
+
+// --- Module Manager ---
+class ModuleManager {
+public:
+    std::vector<Module*> modules;
+    bool menuOpen = false;
+
+    void init() {
+        modules.push_back(new ToggleSprint());
+        // Add Keystrokes, CPS Counter, etc. here
+    }
+
+    void toggleMenu() {
+        menuOpen = !menuOpen;
+        LOGI("Menu status: %s", menuOpen ? "Visible" : "Hidden");
+    }
+
+    void runModules() {
+        for (auto mod : modules) {
+            if (mod->enabled) mod->onTick();
+        }
+    }
+};
+
+ModuleManager g_ModuleManager;
