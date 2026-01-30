@@ -9,15 +9,11 @@ add_library(luma_client SHARED ${SOURCES})
 
 target_compile_options(luma_client PRIVATE
     -O3 -DNDEBUG -fPIC
-    -fno-stack-protector -fno-unwind-tables
-    -fno-asynchronous-unwind-tables
     -Wall -Wextra
 )
 
-# ✅ NO -llog! Just Linux basics - MCPelauncher provides Android libs!
-target_link_libraries(luma_client PRIVATE z dl)
+target_link_libraries(luma_client PRIVATE log m dl)
 
-# 🎯 WEBSITE CI: build/luma_client.so EXACTLY!
 set_target_properties(luma_client PROPERTIES
     OUTPUT_NAME "luma_client"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
