@@ -1,26 +1,20 @@
+# Update the minimum version to stop the warnings
 cmake_minimum_required(VERSION 3.10)
-project(LumaClient)
 
-set(CMAKE_CXX_STANDARD 17)
+project(luma_client)
 
-# Add paths for ImGui and your source
-include_directories(include imgui)
+# Include directories (ensure these match your folder structure)
+include_directories(src)
+include_directories(include)
 
-# Find necessary Android/Linux libraries
-find_library(log-lib log)
-find_library(GLESv3-lib GLESv3)
-
-# Define your source files
-set(SOURCE_FILES 
-    src/main.cpp 
-    imgui/imgui.cpp 
-    imgui/imgui_draw.cpp 
-    imgui/imgui_widgets.cpp 
-    imgui/imgui_tables.cpp
-    imgui/backends/imgui_impl_opengl3.cpp
+# Define the source files you actually have
+set(SOURCE_FILES
+    src/luma_linux.c
+    src/luma_module_manager.cpp
 )
 
+# Tell CMake to build the library using YOUR files
 add_library(luma_client SHARED ${SOURCE_FILES})
 
-# Link libraries
-target_link_libraries(luma_client ${log-lib} ${GLESv3-lib})
+# Link necessary libraries (GLESv3 for rendering, Log for Android logging)
+target_link_libraries(luma_client GLESv3 log)
