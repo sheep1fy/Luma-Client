@@ -47,6 +47,21 @@ target_include_directories(luma_client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/apis
 )
 
+# Add Android NDK headers if available
+if(DEFINED ENV{ANDROID_NDK_HOME})
+    target_include_directories(luma_client PRIVATE
+        $ENV{ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
+    )
+    message(STATUS "Android NDK found at: $ENV{ANDROID_NDK_HOME}")
+elseif(DEFINED ENV{ANDROID_NDK})
+    target_include_directories(luma_client PRIVATE
+        $ENV{ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
+    )
+    message(STATUS "Android NDK found at: $ENV{ANDROID_NDK}")
+else()
+    message(WARNING "Android NDK not found - imgui_impl_android.cpp may fail to compile")
+endif()
+
 # Link libraries (MCPelauncher + Android)
 target_link_libraries(luma_client PRIVATE
     EGL
