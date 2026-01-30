@@ -7,12 +7,16 @@ bool LumaHudEditMode = false;
 
 static bool g_guiOpen = false;
 
-static void LumaToggleGUI() {
+void LumaToggleGUI() {
     ImGuiIO& io = ImGui::GetIO();
-    static bool prevShift = false;
-    bool shift = io.KeysDownRaw[ImGuiKey_RightShift];
-    if (shift && !prevShift) g_guiOpen = !g_guiOpen;
-    prevShift = shift;
+    
+    // Check if Right Shift + F3 is pressed
+    bool shift = ImGui::IsKeyDown(ImGuiKey_RightShift);
+    bool f3 = ImGui::IsKeyPressed(ImGuiKey_F3, false);
+    
+    if (shift && f3) {
+        showLumaGUI = !showLumaGUI;
+    }
 }
 
 void LumaGUIRender() {
