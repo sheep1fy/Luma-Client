@@ -1,22 +1,26 @@
-cmake_minimum_required(VERSION 3.20)
-project(luma_client VERSION 1.0.1 LANGUAGES C)
+cmake_minimum_required(VERSION 3.10)
+project(LumaClient)
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_CXX_STANDARD 17)
 
-set(SOURCES src/luma_linux.c)
-add_library(luma_client SHARED ${SOURCES})
+# Add paths for ImGui and your source
+include_directories(include imgui)
 
-target_compile_options(luma_client PRIVATE
-    -O3 -DNDEBUG -fPIC
-    -Wall -Wextra
+# Find necessary Android/Linux libraries
+find_library(log-lib log)
+find_library(GLESv3-lib GLESv3)
+
+# Define your source files
+set(SOURCE_FILES 
+    src/main.cpp 
+    imgui/imgui.cpp 
+    imgui/imgui_draw.cpp 
+    imgui/imgui_widgets.cpp 
+    imgui/imgui_tables.cpp
+    imgui/backends/imgui_impl_opengl3.cpp
 )
 
-target_link_libraries(luma_client PRIVATE log m dl)
+add_library(luma_client SHARED ${SOURCE_FILES})
 
-set_target_properties(luma_client PROPERTIES
-    OUTPUT_NAME "luma_client"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
-    PREFIX ""
-    SUFFIX ".so"
-)
+# Link libraries
+target_link_libraries(luma_client ${log-lib} ${GLESv3-lib})
