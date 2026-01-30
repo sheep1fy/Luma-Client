@@ -1,25 +1,16 @@
-cmake_minimum_required(VERSION 3.20)
-project(luma_client VERSION 1.0.1 LANGUAGES C)
+#include <stdio.h>
+#include <time.h>
+#include <unistd.h>
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-set(SOURCES src/luma_linux.c)
-add_library(luma_client SHARED ${SOURCES})
-
-target_compile_options(luma_client PRIVATE
-    -O3 -DNDEBUG -fPIC
-    -fno-stack-protector -fno-unwind-tables
-    -fno-asynchronous-unwind-tables
-    -Wall -Wextra
-)
-
-target_link_libraries(luma_client PRIVATE dl z)
-
-# 🎯 WEBSITE CI PERFECT!
-set_target_properties(luma_client PROPERTIES
-    OUTPUT_NAME "luma_client"           # ← Exact filename!
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"  # ← build/
-    PREFIX ""                           # ← No lib prefix!
-    SUFFIX ".so"                        # ← .so suffix!
-)
+__attribute__((constructor))
+void luma_init() {
+    FILE *f = fopen("/tmp/luma_proof.txt", "w");
+    fprintf(f, "LUMA v1.0.1 LOADED %ld\n", (long)time(NULL));
+    fclose(f);
+    
+    // 15x UNMISSABLE PROOF
+    for(int i = 0; i < 15; i++) {
+        printf("LUMA[%d/15]: 🎉 LOADED! K=ClickGUI!\n", i);
+    }
+    fflush(stdout);
+}
