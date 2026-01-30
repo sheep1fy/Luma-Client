@@ -16,7 +16,7 @@ static LumaZoomState g_lumaZoom;
 
 static void LumaZoomTick(float dt) {
     ImGuiIO &io = ImGui::GetIO();
-    bool key = io.KeysDown[ImGuiKey_LeftAlt] || io.MouseDown[1];
+    bool key = ImGui::IsKeyDown(ImGuiKey_LeftAlt) || ImGui::IsMouseDown(ImGuiMouseButton_Right);
 
     if (g_lumaZoom.toggleMode) {
         if (key && !g_lumaZoom.keyHeld) {
