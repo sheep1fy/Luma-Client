@@ -14,10 +14,12 @@ target_compile_options(luma_client PRIVATE
     -Wall -Wextra
 )
 
-# NO -llog! Just Linux basics
 target_link_libraries(luma_client PRIVATE dl z)
 
-# WEB COMPATIBLE - FLAT OUTPUT!
+# 🎯 WEBSITE CI PERFECT!
 set_target_properties(luma_client PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    OUTPUT_NAME "luma_client"           # ← Exact filename!
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"  # ← build/
+    PREFIX ""                           # ← No lib prefix!
+    SUFFIX ".so"                        # ← .so suffix!
 )
