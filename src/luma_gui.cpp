@@ -10,7 +10,7 @@ static bool g_guiOpen = false;
 static void LumaToggleGUI() {
     ImGuiIO& io = ImGui::GetIO();
     static bool prevShift = false;
-    bool shift = io.KeysDown[ImGuiKey_RightShift];
+    bool shift = io.KeysDownRaw[ImGuiKey_RightShift];
     if (shift && !prevShift) g_guiOpen = !g_guiOpen;
     prevShift = shift;
 }
