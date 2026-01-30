@@ -24,6 +24,7 @@ jobs:
 
     - name: Setup Android NDK
       uses: nttld/setup-ndk@v1
+      id: setup-ndk
       with:
         ndk-version: r25c
         add-to-path: false
@@ -31,6 +32,8 @@ jobs:
     - name: Set NDK environment variables
       run: |
         echo "ANDROID_NDK_HOME=${{ steps.setup-ndk.outputs.ndk-path }}" >> $GITHUB_ENV
+        echo "ANDROID_NDK=${{ steps.setup-ndk.outputs.ndk-path }}" >> $GITHUB_ENV
+        echo "NDK path: ${{ steps.setup-ndk.outputs.ndk-path }}"
 
     - name: Create build directory
       run: mkdir build
