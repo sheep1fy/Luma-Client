@@ -1,26 +1,49 @@
 // src/luma_game_api.cpp
 #include "luma_game_api.h"
+#include "../apis/bedrock_1_21_30.hpp"
 
-// TODO: replace these with real libminecraftpe / MCPelauncher calls
+static bool g_apiReady = false;
+
+static void LumaInitBedrockAPI() {
+    if (g_apiReady) return;
+    g_apiReady = bedrock_1_21_30::init();
+}
 
 LumaVec3 LumaGetPlayerPosition() {
-    return {0.f, 64.f, 0.f};
-}
-
-int LumaGetPingMs() {
-    return 0;
-}
-
-bool LumaIsMovingForward() {
-    return false;
+    LumaInitBedrockAPI();
+    if (!g_apiReady || !bedrock_1_21_30::is_ready())
+        return {0.f, 64.f, 0.f};
+    return bedrock_1_21_30::get_player_position();
 }
 
 bool LumaIsOnGround() {
-    return true;
+    LumaInitBedrockAPI();
+    if (!g_apiReady || !bedrock_1_21_30::is_ready())
+        return false;
+    return bedrock_1_21_30::is_on_ground();
 }
 
-void LumaSetSprintKeyDown(bool) {
+bool LumaIsMovingForward() {
+    LumaInitBedrockAPI();
+    if (!g_apiReady || !bedrock_1_21_30::is_ready())
+        return false;
+    return bedrock_1_21_30::is_moving_forward();
 }
 
-void LumaRegisterClick(bool) {
+int LumaGetPingMs() {
+    LumaInitBedrockAPI();
+    if (!g_apiReady || !bedrock_1_21_30::is_ready())
+        return 0;
+    return bedrock_1_21_30::get_ping_ms();
+}
+
+void LumaSetSprintKeyDown(bool down) {
+    LumaInitBedrockAPI();
+    if (g_apiReady && bedrock_1_21_30::is_ready())
+        bedrock_1_21_30::set_sprint_key_down(down);
+}
+
+void LumaRegisterAttackClick(bool left) {
+    // CPS tracking lives in the CPS module, just forward there
+    // (implement LumaCpsOnClick in luma_cps_module.cpp)
 }
