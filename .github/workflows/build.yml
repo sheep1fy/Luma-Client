@@ -2,42 +2,392 @@ name: Luma Client CI/CD
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   pull_request:
     branches: [ main, master ]
+  release:
+    types: [ created ]
   workflow_dispatch:
 
 jobs:
-  build-android:
+  build-android-x86_64:
+    name: Build for Android x86_64
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    # ========================================================================
+    # STEP 1: Checkout Repository
+    # ========================================================================
+    - name: 📥 Checkout Repository
       uses: actions/checkout@v4
-
-    - name: Install Build Tools
-      run: |
-        sudo apt update
-        sudo apt install -y cmake ninja-build
-
-    - name: Setup Android NDK
-      uses: nttld/setup-ndk@v1
       with:
-        ndk-version: r26b
-
-    - name: Build Luma
+        submodules: recursive
+    
+    # ========================================================================
+    # STEP 2: Install Build Dependencies
+    # ========================================================================
+    - name: 🔧 Install Build Tools
       run: |
-        mkdir build
-        cd build
-        cmake .. -G Ninja \
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          build-essential \
+          libgles2-mesa-dev \
+          git
+    
+    # ========================================================================
+    # STEP 3: Setup Android NDK
+    # ========================================================================
+    - name: 📦 Setup Android NDK
+      uses: nttld/setup-ndk@v1
+      id: setup-ndk
+      with:
+        ndk-version: r27
+        add-to-path: true
+    
+    - name: 🔍 Verify NDK Installation
+      run: |
+        echo "NDK Path: ${{ steps.setup-ndk.outputs.ndk-path }}"
+        ls -la ${{ steps.setup-ndk.outputs.ndk-path }}
+        echo "ANDROID_NDK_HOME=${{ steps.setup-ndk.outputs.ndk-path }}" >> $GITHUB_ENV
+    
+    # ========================================================================
+    # STEP 4: Cache Build Dependencies (Optional but Recommended)
+    # ========================================================================
+    - name: 💾 Cache CMake Build Files
+      uses: actions/cache@v4
+      with:
+        path: |
+          build
+          ~/.cache
+        key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-
+    
+    # ========================================================================
+    # STEP 5: Install Dobby Hook Library
+    # ========================================================================
+    - name: 🪝 Install Dobby Hooking Library
+      run: |
+        git clone https://github.com/jmpews/Dobby.git /tmp/dobby
+        cd /tmp/dobby
+        mkdir build && cd build
+        cmake .. \
+          -G Ninja \
           -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
           -DANDROID_ABI=x86_64 \
           -DANDROID_PLATFORM=android-24 \
           -DCMAKE_BUILD_TYPE=Release
         ninja
-
-    - name: Upload Mod File
+        # Copy library to system location
+        sudo cp libdobby.so /usr/local/lib/
+        sudo cp -r ../include/dobby /usr/local/include/
+        sudo ldconfig
+    
+    # ========================================================================
+    # STEP 6: Verify Project Structure
+    # ========================================================================
+    - name: 📋 Verify Project Structure
+      run: |
+        echo "=== Project Structure ==="
+        ls -la
+        echo ""
+        echo "=== ImGui Files ==="
+        ls -la imgui/
+        echo ""
+        echo "=== ImGui Backends ==="
+        ls -la imgui/backends/
+        echo ""
+        echo "=== Source Files ==="
+        ls -la src/
+        echo ""
+        echo "=== Modules ==="
+        ls -la src/modules/
+    
+    # ========================================================================
+    # STEP 7: Configure CMake
+    # ========================================================================
+    - name: ⚙️ Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=x86_64 \
+          -DANDROID_PLATFORM=android-24 \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_VERBOSE_MAKEFILE=ON
+    
+    # ========================================================================
+    # STEP 8: Build Luma Client
+    # ========================================================================
+    - name: 🔨 Build Luma Client
+      run: |
+        cd build
+        ninja -v
+    
+    # ========================================================================
+    # STEP 9: Verify Build Output
+    # ========================================================================
+    - name: ✅ Verify Build Output
+      run: |
+        echo "=== Build Output ==="
+        ls -lh build/
+        
+        if [ -f "build/libluma_client.so" ]; then
+          echo "✓ libluma_client.so built successfully"
+          echo "File size: $(du -h build/libluma_client.so | cut -f1)"
+          
+          # Check symbols
+          echo ""
+          echo "=== Exported Symbols ==="
+          nm -D build/libluma_client.so | grep -E "init_luma|toggle_luma|run_luma" || true
+          
+          # Check dependencies
+          echo ""
+          echo "=== Library Dependencies ==="
+          readelf -d build/libluma_client.so | grep NEEDED || true
+        else
+          echo "✗ Build failed - libluma_client.so not found"
+          exit 1
+        fi
+    
+    # ========================================================================
+    # STEP 10: Strip Debug Symbols (Release)
+    # ========================================================================
+    - name: 🗜️ Strip Debug Symbols
+      if: github.event_name == 'release' || github.ref == 'refs/heads/main'
+      run: |
+        echo "Original size: $(du -h build/libluma_client.so | cut -f1)"
+        $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip build/libluma_client.so
+        echo "Stripped size: $(du -h build/libluma_client.so | cut -f1)"
+    
+    # ========================================================================
+    # STEP 11: Upload Artifact
+    # ========================================================================
+    - name: 📤 Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
         name: luma_client-android-x86_64
-        path: build/luma_client.so
+        path: build/libluma_client.so
+        retention-days: 90
+        if-no-files-found: error
+    
+    # ========================================================================
+    # STEP 12: Create Checksum
+    # ========================================================================
+    - name: 🔐 Generate Checksum
+      run: |
+        cd build
+        sha256sum libluma_client.so > libluma_client.so.sha256
+        cat libluma_client.so.sha256
+    
+    - name: 📤 Upload Checksum
+      uses: actions/upload-artifact@v4
+      with:
+        name: luma_client-checksum
+        path: build/libluma_client.so.sha256
+        retention-days: 90
+
+  # ==========================================================================
+  # BUILD FOR ARM64 (Optional - for Android devices)
+  # ==========================================================================
+  build-android-arm64:
+    name: Build for Android ARM64
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: 🔧 Install Build Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build build-essential
+    
+    - name: 📦 Setup Android NDK
+      uses: nttld/setup-ndk@v1
+      id: setup-ndk
+      with:
+        ndk-version: r27
+        add-to-path: true
+    
+    - name: 🪝 Install Dobby for ARM64
+      run: |
+        git clone https://github.com/jmpews/Dobby.git /tmp/dobby
+        cd /tmp/dobby
+        mkdir build && cd build
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=arm64-v8a \
+          -DANDROID_PLATFORM=android-24 \
+          -DCMAKE_BUILD_TYPE=Release
+        ninja
+    
+    - name: ⚙️ Configure CMake for ARM64
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=arm64-v8a \
+          -DANDROID_PLATFORM=android-24 \
+          -DCMAKE_BUILD_TYPE=Release
+    
+    - name: 🔨 Build
+      run: |
+        cd build
+        ninja -v
+    
+    - name: ✅ Verify Build
+      run: |
+        if [ -f "build/libluma_client.so" ]; then
+          echo "✓ ARM64 build successful"
+          file build/libluma_client.so
+        else
+          echo "✗ ARM64 build failed"
+          exit 1
+        fi
+    
+    - name: 📤 Upload ARM64 Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: luma_client-android-arm64
+        path: build/libluma_client.so
+        retention-days: 90
+
+  # ==========================================================================
+  # CREATE RELEASE (Only on tag push)
+  # ==========================================================================
+  create-release:
+    name: Create Release
+    needs: [build-android-x86_64, build-android-arm64]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: 📥 Download x86_64 Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: luma_client-android-x86_64
+        path: ./artifacts/x86_64
+    
+    - name: 📥 Download ARM64 Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: luma_client-android-arm64
+        path: ./artifacts/arm64
+    
+    - name: 📥 Download Checksum
+      uses: actions/download-artifact@v4
+      with:
+        name: luma_client-checksum
+        path: ./artifacts
+    
+    - name: 📦 Package Release
+      run: |
+        cd artifacts
+        
+        # Rename files with architecture suffix
+        mv x86_64/libluma_client.so libluma_client-x86_64.so
+        mv arm64/libluma_client.so libluma_client-arm64.so
+        
+        # Create checksums for all
+        sha256sum libluma_client-x86_64.so > libluma_client-x86_64.so.sha256
+        sha256sum libluma_client-arm64.so > libluma_client-arm64.so.sha256
+        
+        # Create installation instructions
+        cat > INSTALL.txt << 'EOF'
+        Luma Client Installation Instructions
+        ======================================
+        
+        1. Choose the correct binary for your system:
+           - libluma_client-x86_64.so : For mcpelauncher on Linux (most common)
+           - libluma_client-arm64.so  : For Android devices (ARM64)
+        
+        2. Install to mcpelauncher:
+           cp libluma_client-x86_64.so ~/.local/share/mcpelauncher/mods/libluma_client.so
+        
+        3. Launch Minecraft Bedrock via mcpelauncher
+        
+        4. Press 'K' in-game to open the Luma menu
+        
+        For troubleshooting, see: https://github.com/sheep1fy/Luma-Client
+        EOF
+        
+        ls -lh
+    
+    - name: 🚀 Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/libluma_client-x86_64.so
+          artifacts/libluma_client-arm64.so
+          artifacts/libluma_client-x86_64.so.sha256
+          artifacts/libluma_client-arm64.so.sha256
+          artifacts/INSTALL.txt
+        body: |
+          ## Luma Client Release ${{ github.ref_name }}
+          
+          ### Installation
+          
+          **For mcpelauncher (Linux x86_64):**
+          ```bash
+          wget https://github.com/sheep1fy/Luma-Client/releases/download/${{ github.ref_name }}/libluma_client-x86_64.so
+          mv libluma_client-x86_64.so ~/.local/share/mcpelauncher/mods/libluma_client.so
+          ```
+          
+          **For Android (ARM64):**
+          Download `libluma_client-arm64.so` and place in your mods directory.
+          
+          ### Verify Integrity
+          ```bash
+          sha256sum -c libluma_client-x86_64.so.sha256
+          ```
+          
+          ### Features
+          - Modern Flarial-inspired UI with glassmorphism
+          - 14+ utility modules (ToggleSprint, Zoom, FPS, CPS, etc.)
+          - Customizable HUD elements
+          - Press 'K' to open menu
+          
+          ### Changelog
+          See [CHANGELOG.md](https://github.com/sheep1fy/Luma-Client/blob/main/CHANGELOG.md)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================================================
+  # CODE QUALITY CHECKS (Optional but Recommended)
+  # ==========================================================================
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: 🔍 Check for TODO/FIXME
+      run: |
+        echo "=== Searching for TODO/FIXME ==="
+        grep -r "TODO\|FIXME" src/ include/ || echo "✓ No TODO/FIXME found"
+    
+    - name: 📏 Check Line Lengths
+      run: |
+        echo "=== Checking for excessively long lines ==="
+        find src/ include/ -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+          xargs awk 'length>120 {print FILENAME":"NR": Line too long ("length" chars)"; errors++} END {exit errors>0}'
+    
+    - name: 🧹 Check for Trailing Whitespace
+      run: |
+        echo "=== Checking for trailing whitespace ==="
+        ! find src/ include/ -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" -exec grep -n "[[:space:]]$" {} + || \
+          echo "⚠ Found trailing whitespace (non-critical)"
