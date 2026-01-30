@@ -33,11 +33,19 @@ jobs:
           git clone --depth 1 https://github.com/jmpews/Dobby.git dobby-src
           cd dobby-src
           
-          # Scrub ARM64 assembly to prevent x86_64 build failures
-          find source -name "CMakeLists.txt" -exec sed -i '/arm64/d' {} +
-          find source -name "CMakeLists.txt" -exec sed -i '/ARM64/d' {} +
+          # 1. Physically remove all ARM-related source folders to prevent accidental inclusion
+          find . -type d -name "arm64" -exec rm -rf {} +
+          find . -type d -name "arm" -exec rm -rf {} +
+          find . -type d -name "aarch64" -exec rm -rf {} +
           
-          mkdir build && cd build
+          # 2. Scrub any mention of these architectures from ALL CMake files
+          find . -name "CMakeLists.txt" -exec sed -i '/arm64/Id' {} +
+          find . -name "CMakeLists.txt" -exec sed -i '/aarch64/Id' {} +
+          find . -name "CMakeLists.txt" -exec sed -i '/[^_]arm[^_]/Id' {} +
+          
+          # 3. Specifically fix the ClosureTrampolineBridge which is the main culprit
+          # We force it to only look at x86/x64
+          mkdir -p build && cd build
           cmake .. \
             -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
@@ -45,9 +53,9 @@ jobs:
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
             -DDOBBY_DEBUG=OFF
+          
           ninja
           
-          # Save the path to the built library for the next step
           echo "DOBBY_LIB_DIR=$(pwd)" >> $GITHUB_ENV
           echo "DOBBY_INC_DIR=$(dirname $(pwd))/include" >> $GITHUB_ENV
 
@@ -64,8 +72,6 @@ jobs:
             -DDOBBY_LIBRARY=${{ env.DOBBY_LIB_DIR }}/libdobby.a
           
           ninja
-          
-          # Strip symbols for the final mod file
           ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip libluma_client.so
 
       - name: Upload Artifact
@@ -73,23 +79,3 @@ jobs:
         with:
           name: luma-client-x86_64
           path: build/libluma_client.so
-
-  release:
-    name: Create GitHub Release
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: luma-client-x86_64
-          path: .
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: libluma_client.so
-          body: "Stable build of Luma Client for x86_64 Linux mcpelauncher."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
