@@ -1,253 +1,100 @@
-# 🌟 Luma Client
+🌟 Luma Client
 
 <div align="center">
 
-![Build Status](https://github.com/sheep1fy/Luma-Client/workflows/Luma%20Client%20CI%2FCD/badge.svg)
-![Platform](https://img.shields.io/badge/platform-Linux-orange.svg)
-![Minecraft](https://img.shields.io/badge/minecraft-bedrock%201.21.30-green.svg)
+A high-performance, glassmorphism-inspired client for Minecraft Bedrock Edition on Linux.
 
-**A client mod for Minecraft Bedrock Edition on Linux**
+Engineered for competitive PvP through mcpelauncher integration.
 
-*Built for Linux users running Bedrock Edition through mcpelauncher*
-
-[Features](#-features) • [Installation](#-installation) • [Building](#-building-from-source) • [Usage](#-usage)
+✨ Features • 📦 Installation • 🔨 Building • 🎯 Usage
 
 </div>
+🎮 Overview
 
----
+Luma Client is a professional-grade modification for Minecraft Bedrock, specifically optimized for the Linux mcpelauncher environment. Unlike standard mods, Luma uses a C-to-C++ bridge with Dobby hooking to provide a lag-free experience with a modern, sleek interface inspired by Flarial.
+✨ Features
+💎 The "Flarial" Modern UI
 
-## 🎮 Overview
+    Glassmorphism: Semi-transparent, blurred-background menu for a premium feel.
 
-Luma Client is a client-side modification for Minecraft Bedrock Edition 1.21.30, designed for Linux users running the game through [mcpelauncher](https://github.com/minecraft-linux/mcpelauncher-manifest). It provides HUD modules and quality-of-life features.
+    Sidebar Navigation: Organized tabs for Modules, Visuals, and Settings.
 
----
+    Animated Toggles: Custom-rendered Cyan switches replacing standard checkboxes.
 
-## ✨ Features
+🛡️ PvP HUD Modules
 
-### HUD Modules
+    ⌨️ Keystrokes: High-contrast WASD & Mouse button display.
 
-- **📊 FPS Counter** - Display your current framerate
-- **🌍 Coordinates Display** - Show your X, Y, Z position
-- **🖱️ CPS Counter** - Track clicks per second
-- **📡 Ping Display** - Monitor your connection latency
-- **⌨️ Keystrokes** - Visual display of WASD key presses
+    🖱️ CPS Counter: Real-time Click-Per-Second tracking for both buttons.
 
-### Gameplay Features
+    🏃 ToggleSprint: Maintain maximum speed without fatigue.
 
-- **🏃 AutoSprint** - Automatically sprint when moving forward
-- **🔍 Zoom** - Adjustable camera zoom functionality
+    📊 Performance Stats: Sleek FPS, Ping, and Coordinate displays.
 
-### Configuration
+⚙️ Engine Features
 
-- **HUD Editor** - Drag and drop HUD elements to customize positions
-- **Save/Load Config** - Persistent settings stored in `~/.local/share/mcpelauncher/luma_config.txt`
-- **Per-Module Toggle** - Enable/disable individual features
+    Low Latency: Hooked via Dobby directly into the GLES3 render loop.
 
----
+    Persistent Config: Settings save automatically to your local share directory.
 
-## 📦 Installation
+🏗️ Technical Architecture
 
-### Prerequisites
+Luma uses a hybrid architecture to ensure compatibility with the Linux Bedrock launcher:
 
-- Linux operating system
-- [mcpelauncher](https://github.com/minecraft-linux/mcpelauncher-manifest) installed
-- Minecraft Bedrock Edition 1.21.30
+    luma_linux.c: The entry point. Handles low-level Dobby hooks for input and rendering.
 
-### Quick Install
+    luma_module_manager.cpp: The brain. Manages UI state, modern styling, and module logic.
 
-1. **Download the latest build**
-   ```bash
-   # Download luma_client.so from GitHub Actions artifacts
-   # Or build from source (see below)
-   ```
+    luma_theme.hpp: Defines the "Sleek Dark" color palette and rounding constants.
 
-2. **Install to mcpelauncher mods directory**
-   ```bash
-   mkdir -p ~/.local/share/mcpelauncher/mods
-   cp luma_client.so ~/.local/share/mcpelauncher/mods/
-   ```
+📦 Installation
+Quick Setup
 
-3. **Launch Minecraft**
-   ```bash
-   mcpelauncher-client
-   ```
+    Prepare Directory
+    Bash
 
-4. **Open Luma Client GUI**
-   - Press `Right Shift + F3` in-game
+    mkdir -p ~/.local/share/mcpelauncher/mods
 
----
+    Deploy Binary
+    Move the compiled libluma_client.so into the folder above.
 
-## 🔨 Building from Source
+    Launch
+    Open Minecraft via mcpelauncher-client and press K to toggle the menu.
 
-### Build Dependencies
+🔨 Building from Source
+1. Prerequisites
 
-```bash
-# Ubuntu/Debian
-sudo apt update
-sudo apt install -y cmake ninja-build gcc g++ libegl1-mesa-dev libgles2-mesa-dev
+Ensure you have the Android NDK (r27+) and CMake installed.
+2. Compile
+Bash
 
-# Arch Linux
-sudo pacman -S cmake ninja gcc mesa
-
-# Fedora
-sudo dnf install cmake ninja-build gcc-c++ mesa-libEGL-devel mesa-libGLES-devel
-```
-
-### Build Steps
-
-```bash
-# Clone the repository
 git clone https://github.com/sheep1fy/Luma-Client.git
 cd Luma-Client
-
-# Create build directory
 mkdir build && cd build
 
-# Configure with CMake
-cmake .. -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_STANDARD=20
+# Configure for Android/Linux target
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
 
-# Build
-ninja
+🎯 Usage
+Key	Action
+K	Toggle Modern Mod Menu
+WASD	Movement (Updates Keystrokes HUD)
+ESC	Close Menu / Release Mouse
+🤝 Contributing
 
-# Output: build/luma_client.so
-```
+Luma is open-source. We welcome UI/UX improvements and new PvP modules!
 
-### Note for GitHub Actions
+    Fork the repo.
 
-The build requires Android NDK for compiling ImGui's Android backend. The CI/CD workflow automatically sets this up.
+    Create your module in src/modules/.
 
----
-
-## 🎯 Usage
-
-### Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Right Shift + F3` | Toggle Luma Client menu |
-| `Left Alt` or `Right Mouse` | Zoom (when enabled) |
-
-### Getting Started
-
-1. Launch Minecraft with mcpelauncher
-2. Press `Right Shift + F3` to open the menu
-3. Check the modules you want to enable
-4. Click "HUD Editor" to reposition elements
-5. Click "Save Config" to save your settings
-
-### Configuration File
-
-Settings are stored in:
-```
-~/.local/share/mcpelauncher/luma_config.txt
-```
-
-Format:
-```
-fps_x=10.0
-fps_y=10.0
-module_FPS=1
-module_Coordinates=1
-module_AutoSprint=1
-...
-```
-
----
-
-## 🏗️ Technical Details
-
-### Technology Stack
-
-- **Language**: C++20
-- **UI Framework**: Dear ImGui
-- **Graphics**: OpenGL ES2 via EGL
-- **Build System**: CMake + Ninja
-- **Platform**: Linux x86_64
-
-### Project Structure
-
-```
-Luma-Client/
-├── src/
-│   ├── luma_core.cpp           # Core initialization
-│   ├── luma_gui.cpp             # GUI system
-│   ├── luma_module_manager.cpp # Module management
-│   ├── luma_hud_editor.cpp     # HUD positioning
-│   ├── luma_config.cpp          # Configuration
-│   ├── luma_game_api.cpp        # Game API hooks
-│   ├── luma_camera_api.cpp     # Camera controls
-│   ├── luma_linux.cpp           # Linux/mcpelauncher integration
-│   └── modules/                 # Feature modules
-├── include/                     # Headers
-├── apis/                        # Bedrock 1.21.30 API definitions
-├── imgui/                       # Dear ImGui library
-└── CMakeLists.txt              # Build configuration
-```
-
-### Modules Included
-
-All modules are in `src/modules/`:
-- `luma_fps_module.cpp`
-- `luma_coords_module.cpp`
-- `luma_cps_module.cpp`
-- `luma_ping_module.cpp`
-- `luma_keystrokes_module.cpp`
-- `luma_autosprint_module.cpp`
-- `luma_zoom_module.cpp`
-
----
-
-## 🐛 Troubleshooting
-
-### Module not loading
-
-```bash
-# Check if the .so is in the correct location
-ls ~/.local/share/mcpelauncher/mods/
-
-# Check if mcpelauncher is loading mods
-# Look for mod loading messages in console output
-```
-
-### GUI not appearing
-
-- Make sure you're pressing **Right Shift + F3** (not Left Shift)
-- Check that Luma Client loaded successfully in the console
-
-### Build errors
-
-- Ensure all dependencies are installed
-- For Android backend compilation errors, the CI/CD workflow handles NDK setup automatically
-- Clean build: `rm -rf build && mkdir build`
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! To contribute:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test your changes
-5. Submit a pull request
-
----
-
-## 🙏 Acknowledgments
-
-- **[mcpelauncher](https://github.com/minecraft-linux/mcpelauncher-manifest)** - Making Bedrock Edition work on Linux
-- **[Dear ImGui](https://github.com/ocornut/imgui)** - UI library
-- **Flarial Client** - Original inspiration
-
----
+    Open a Pull Request.
 
 <div align="center">
 
-**Built for the Linux Minecraft Bedrock community**
+Built with ❤️ for the Linux Bedrock Community
 
-⭐ Star this repo if you find it useful!
+⭐ Star this repository if you love the sleek UI!
 
 </div>
