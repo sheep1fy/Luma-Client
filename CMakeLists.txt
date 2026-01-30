@@ -51,7 +51,6 @@ target_link_libraries(luma_client PRIVATE
     EGL
     dl
     pthread 
-    log
 )
 
 target_link_options(luma_client PRIVATE
