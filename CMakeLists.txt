@@ -14,8 +14,8 @@ target_compile_options(luma_client PRIVATE
     -Wall -Wextra
 )
 
-# ONLY Linux libs - MCPelauncher provides Android ones!
-target_link_libraries(luma_client PRIVATE dl z)  # NO -llog!
+# FIXED: NO -llog! Just dl + z
+target_link_libraries(luma_client PRIVATE dl z)
 
 set_target_properties(luma_client PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Luma Client/1.0.1/x86_64"
