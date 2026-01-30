@@ -65,9 +65,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(luma_client PRIVATE -O3 -DNDEBUG)
 endif()
 
-# Strip symbols for smaller .so
+# Strip symbols for smaller .so and remove 'lib' prefix
 set_target_properties(luma_client PROPERTIES
     OUTPUT_NAME "luma_client"
+    PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )
 
