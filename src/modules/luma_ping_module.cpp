@@ -7,7 +7,7 @@
 static int g_ping = 0;
 
 static auto LumaPingTick = [](float) {
-    g_ping = LumaGetPing();
+    g_ping = LumaGetPingMs();
 };
 
 static auto LumaPingRender = []() {
