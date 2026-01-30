@@ -50,9 +50,17 @@ jobs:
         path: build/luma_client.so
         retention-days: 30
 
+    - name: Upload luma_client.so to GitHub Release 'Release'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: Release
+        files: build/luma_client.so
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Show success
       run: |
-        echo "🎉 Luma Client built successfully!"
+        echo "🎉 Luma Client built and uploaded successfully!"
         echo "📱 Copy build/luma_client.so to ~/.local/share/mcpelauncher/mods/"
 
   notify:
