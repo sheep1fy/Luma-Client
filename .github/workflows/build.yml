@@ -25,7 +25,7 @@ jobs:
       with:
         ndk-version: r26b
 
-    - name: Build with Android Glue
+    - name: Build Luma
       run: |
         mkdir build
         cd build
