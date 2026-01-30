@@ -5,15 +5,17 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger from GitHub UI
 
 jobs:
   build-linux:
     runs-on: ubuntu-latest
-
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: false  # ImGui is vendored
 
     - name: Install dependencies
       run: |
@@ -41,10 +43,14 @@ jobs:
         ls -la build/luma_client.so
         file build/luma_client.so
 
-    # Upload to release
-    - name: Create Release and Upload .so
-      uses: softprops/action-gh-release@v1
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
       with:
-        files: build/luma_client.so
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: luma_client-${{ github.sha }}
+        path: build/luma_client.so
+        retention-days: 30
+
+    - name: Show success
+      run: |
+        echo "🎉 Luma Client built successfully!"
+        echo "📱 Copy build/luma_client.so to ~/.local/share/mcpelauncher/mods/"
