@@ -20,7 +20,9 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build cmake build-essential
+          sudo apt-get install -y ninja-build cmake build-essential \
+                                  default-jdk openjdk-17-jdk-dev  # <- FIX: Adds jni.h headers
+                                  libglfw3-dev libgl1-mesa-dev libglew-dev  # GUI/OpenGL for ImGui
 
       - name: Configure CMake
         run: |
@@ -36,8 +38,9 @@ jobs:
       - name: Strip and verify
         run: |
           cd build
-          strip luma_client.so || echo "No luma_client.so found"
+          strip --strip-unneeded luma_client.so || echo "No luma_client.so found"
           ls -la *.so || echo "No .so files"
+          file luma_client.so  # Verify it's a valid x86_64 ELF shared object
 
       - name: Upload artifact
         if: success()
@@ -45,3 +48,4 @@ jobs:
         with:
           name: luma_client-x86_64-linux
           path: build/luma_client.so
+          retention-days: 30  # Keep artifacts for 30 days
