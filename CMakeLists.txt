@@ -3,6 +3,9 @@ project(luma_client)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# CRITICAL: Define IMGUI_IMPL_OPENGL_ES3 globally BEFORE any sources are compiled
+add_compile_definitions(IMGUI_IMPL_OPENGL_ES3)
+
 # 1. Define Paths
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -49,11 +52,8 @@ set(LUMA_SOURCES
 # 5. Build Shared Library
 add_library(luma_client SHARED ${LUMA_SOURCES} ${IMGUI_SOURCES})
 
-# 6. Compile Definitions - FIXED: Added IMGUI_IMPL_OPENGL_ES3
-target_compile_definitions(luma_client PRIVATE 
-    IMGUI_DEFINE_MATH_OPERATORS
-    IMGUI_IMPL_OPENGL_ES3
-)
+# 6. Additional target-specific definitions
+target_compile_definitions(luma_client PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
-# 7. Link Libraries - FIXED: Use GLESv2 for mcpelauncher compatibility
+# 7. Link Libraries
 target_link_libraries(luma_client GLESv2 log)
