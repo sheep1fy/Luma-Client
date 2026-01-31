@@ -1,74 +1,53 @@
 cmake_minimum_required(VERSION 3.18.1)
+project(LumaClient VERSION 1.0.1 LANGUAGES C CXX)
 
-project(Luma-Client
-    VERSION 1.0.1
-    DESCRIPTION "Luma Client - Android Bedrock Client"
-    LANGUAGES C CXX
+# Android detection
+set(ANDROID_BUILD ON)
+
+# Global flags
+add_compile_definitions(
+    IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    IMGUI_IMPL_OPENGL_ES3=0
+    IMGUI_IMPL_OPENGL_LOADER_CUSTOM=1
 )
 
-# Android NDK Detection
-if(NOT DEFINED ANDROID)
-    if(DEFINED ENV{ANDROID_ABI})
-        set(ANDROID TRUE)
-    endif()
-endif()
-
-if(ANDROID)
-    message(STATUS "🎮 Building for Android (MCPE)")
-    
-    # Find Android log library
-    find_library(log-lib log)
-    
-    # Global compile options for Android
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1 -fno-rtti -fno-exceptions")
-    
-else()
-    message(WARNING "❌ Android not detected - skipping JNI sources")
-endif()
-
-# ImGui
-add_library(imgui STATIC
-    imgui/imgui.cpp
-    imgui/imgui_draw.cpp
-    imgui/imgui_tables.cpp
-    imgui/imgui_widgets.cpp
+# ImGui static library
+file(GLOB IMGUI_SOURCES 
+    imgui/*.cpp
     imgui/backends/imgui_impl_opengl3.cpp
 )
-
+add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC imgui imgui/backends)
 
-# Luma Client (Main Library)
-add_library(luma_client SHARED
+# Main Luma Client shared library (.so)
+add_library(luma_client SHARED 
     src/luma_linux.c
-    src/luma_module_manager.cpp  # Add your other sources here
 )
 
 target_include_directories(luma_client PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/imgui
+    .
+    include
+    src
+    imgui
 )
 
-target_link_libraries(luma_client
+target_link_libraries(luma_client 
     imgui
     GLESv3
-    dl  # dlsym
+    log    # Android logging
+    dl     # dlsym for hooking
 )
 
+# Android optimizations
 if(ANDROID)
-    target_link_libraries(luma_client ${log-lib})
-    target_compile_definitions(luma_client PRIVATE LUMA_CLIENT_ANDROID=1)
+    target_compile_options(luma_client PRIVATE
+        -O3
+        -march=x86-64
+        -flto
+        -fvisibility=hidden
+        -fPIC
+    )
 endif()
-
-# Optimization flags
-target_compile_options(luma_client PRIVATE
-    -O3
-    -march=native
-    -flto
-    -fvisibility=hidden
-)
 
 set_target_properties(luma_client PROPERTIES
     OUTPUT_NAME "luma_client"
