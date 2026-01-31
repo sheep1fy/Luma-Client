@@ -1,78 +1,72 @@
 cmake_minimum_required(VERSION 3.20)
-project(Luma-Client)
+project(LumaClient LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Optimization flags
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
-# Find required packages
-find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GLEW REQUIRED glew)
+# Prefer GLVND if present, but don't hard-fail CI if OpenGL dev libs are missing
+set(OpenGL_GL_PREFERENCE GLVND)
 
-# Include directories
-include_directories(
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/imgui
-    ${CMAKE_SOURCE_DIR}/imgui/backends
-    ${OPENGL_INCLUDE_DIRS}
-    ${GLFW3_INCLUDE_DIRS}
-    ${GLEW_INCLUDE_DIRS}
+# Try OpenGL, but don't make it REQUIRED to avoid CI failure
+find_package(OpenGL QUIET)
+
+# Assume glfw is provided by your environment (vcpkg/system package)
+# If you use vcpkg, you probably already have `find_package(glfw3 CONFIG REQUIRED)` elsewhere.
+find_package(glfw3 QUIET)
+
+# ImGui locations (adjust if different in your repo)
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/imgui)
+set(IMGUI_BACKENDS_DIR ${IMGUI_DIR}/backends)
+
+set(IMGUI_SOURCES
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_BACKENDS_DIR}/imgui_impl_glfw.cpp
+    ${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp
 )
 
-# Source files
-set(SOURCES
+set(LUMA_SOURCES
     src/main.cpp
     src/apis/bedrock_1_21_30.cpp
-    imgui/imgui.cpp
-    imgui/imgui_draw.cpp
-    imgui/imgui_tables.cpp
-    imgui/imgui_widgets.cpp
-    imgui/backends/imgui_impl_glfw.cpp
-    imgui/backends/imgui_impl_opengl3.cpp
+    ${IMGUI_SOURCES}
 )
 
-# Create shared library
-add_library(luma_client SHARED ${SOURCES})
+add_library(luma_client SHARED ${LUMA_SOURCES})
 
-# Fix ImGui OpenGL3 loader issue - explicitly include backends folder first
-target_include_directories(luma_client PRIVATE 
-    ${CMAKE_SOURCE_DIR}/imgui/backends  # CRITICAL: imgui_impl_opengl3_loader.h lives here
-    ${CMAKE_SOURCE_DIR}/imgui
+# Ensure loader header is found
+target_include_directories(luma_client PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
+    ${IMGUI_DIR}
+    ${IMGUI_BACKENDS_DIR}
 )
 
-# Define ImGui OpenGL loader (choose one)
-target_compile_definitions(luma_client PRIVATE 
-    IMGUI_IMPL_OPENGL_LOADER_GLAD
-    # Alternative: IMGUI_IMPL_OPENGL_LOADER_GLEW  (if using GLEW)
+# Match backend expectations: GLFW pulls in GL headers, backend loads functions
+target_compile_definitions(luma_client PRIVATE
+    IMGUI_IMPL_OPENGL_LOADER_CUSTOM   # use ImGui's built-in loader function
 )
 
-# Link libraries
-target_link_libraries(luma_client PRIVATE
-    OpenGL::GL
-    glfw
-    GLEW::GLEW
-    -fvisibility=hidden
-)
+# Link what we can detect; don't hard-require OpenGL::GL
+if(TARGET glfw OR glfw3_FOUND)
+    # vcpkg config mode: glfw
+    target_link_libraries(luma_client PRIVATE glfw)
+endif()
 
-# Set visibility for shared library
-set_target_properties(luma_client PROPERTIES 
+if(OpenGL_FOUND)
+    # If OpenGL dev package is present on the system, use it
+    target_link_libraries(luma_client PRIVATE OpenGL::GL)
+endif()
+
+# Visibility & PIC (useful for client as a shared lib)
+set_target_properties(luma_client PROPERTIES
     CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN YES
 )
-
-# Install targets
-install(TARGETS luma_client DESTINATION lib)
-install(DIRECTORY include/ DESTINATION include)
