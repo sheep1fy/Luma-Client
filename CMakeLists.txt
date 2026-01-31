@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.10)
 project(luma_client)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -57,6 +57,18 @@ target_compile_definitions(luma_client PRIVATE
 )
 
 # 7. Link Libraries
-# FIXED: Changed from GLESv3 to GLESv2 (available on all Mesa systems)
-# OpenGL ES 2.0 is backward compatible and widely supported on Linux
-target_link_libraries(luma_client GLESv2 log)
+# Different libraries needed for Android vs Linux
+if(ANDROID)
+    # Android: Link against Android NDK libraries
+    target_link_libraries(luma_client 
+        GLESv3      # Android has GLESv3 in the NDK
+        EGL         # EGL is needed for Android
+        log         # Android logging
+    )
+else()
+    # Linux: Link against Mesa libraries
+    target_link_libraries(luma_client 
+        GLESv2      # Mesa provides all ES versions via GLESv2
+        log         # Android log library (provided by mcpelauncher)
+    )
+endif()
