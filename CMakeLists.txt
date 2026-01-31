@@ -5,6 +5,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 
 # ======================================================================
+# 0. FIX: Disable ARM64 for x86_64 Linux builds (CI/CD fix)
+# ======================================================================
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|x86_64" AND NOT ANDROID)
+    message(STATUS "Detected x86_64 Linux build - disabling ARM64 dobby support")
+    set(DOBBY_X86_64 ON CACHE BOOL "Enable x86_64 dobby support" FORCE)
+    set(DOBBY_ARM64 OFF CACHE BOOL "Disable ARM64 dobby support" FORCE)
+    set(DOBBY_ARM32 OFF CACHE BOOL "Disable ARM32 dobby support" FORCE)
+    set(DOBBY_ARCH "x86_64" CACHE STRING "Force x86_64 dobby architecture" FORCE)
+endif()
+
+# ======================================================================
 # 1. DIRECTORY DEFINITIONS
 # ======================================================================
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
@@ -127,5 +138,7 @@ message(STATUS "==================================================")
 message(STATUS "CMake Version:     ${CMAKE_VERSION}")
 message(STATUS "C++ Standard:      ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build Type:        ${CMAKE_BUILD_TYPE}")
+message(STATUS "Architecture:      ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "Dobby ARM64:       ${DOBBY_ARM64}")
 message(STATUS "Output Binary:     libluma_client.so")
 message(STATUS "==================================================")
