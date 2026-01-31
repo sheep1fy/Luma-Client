@@ -50,7 +50,11 @@ set(LUMA_SOURCES
 add_library(luma_client SHARED ${LUMA_SOURCES} ${IMGUI_SOURCES})
 
 # 6. Define ImGui Math Operators (fixes ImVec2 addition error)
-target_compile_definitions(luma_client PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
+# Also define IMGUI_IMPL_OPENGL_ES3 to use OpenGL ES 3.0 functions
+target_compile_definitions(luma_client PRIVATE 
+    IMGUI_DEFINE_MATH_OPERATORS
+    IMGUI_IMPL_OPENGL_ES3
+)
 
 # 7. Link Libraries
 # FIXED: Changed from GLESv3 to GLESv2 (available on all Mesa systems)
