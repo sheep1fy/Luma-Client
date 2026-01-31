@@ -27,7 +27,7 @@ jobs:
         add-to-path: true
 
     - name: Install CMake 3.26
-      uses: lukka/get-cmake@v4
+      uses: lukka/get-cmake@v3
       with:
         version: '3.26.4'
         
