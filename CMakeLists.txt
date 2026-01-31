@@ -12,63 +12,76 @@ endif()
 message(STATUS "===============================================")
 message(STATUS " Luma Client Build Configuration")
 message(STATUS "===============================================")
-message(STATUS "CMake Version: ${CMAKE_VERSION}")
-message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
-message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "Architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
-# Auto-find ALL your actual source files
+# ONLY Linux-compatible ImGui files
+set(IMGUI_CORE
+    imgui/imgui.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+)
+
+set(IMGUI_LINUX_BACKEND
+    imgui/backends/imgui_impl_opengl3.cpp
+)
+
+# Core project sources (auto-find)
 file(GLOB_RECURSE LUMA_SOURCES 
     "src/*.cpp"
     "apis/*.cpp"
-    "imgui/*.cpp"
-    "imgui/backends/imgui_impl_opengl3.cpp"
+    "*.cpp"
 )
 
-# Remove demo if present (optional, saves space)
-list(FILTER LUMA_SOURCES EXCLUDE REGEX "imgui_demo.cpp$")
+# Linux-only: exclude Android/iOS backends
+list(FILTER LUMA_SOURCES EXCLUDE REGEX ".*(android|ios|win32|dx).*")
 
-# Verify we found sources
+# Combine all sources
+list(APPEND LUMA_SOURCES ${IMGUI_CORE} ${IMGUI_LINUX_BACKEND})
+
+# Remove duplicates
+list(REMOVE_DUPLICATES LUMA_SOURCES)
+
 list(LENGTH LUMA_SOURCES source_count)
+message(STATUS "Found ${source_count} Linux-compatible sources")
+
 if(source_count EQUAL 0)
-    message(FATAL_ERROR "No source files found! Check your src/ apis/ imgui/ directories")
+    message(FATAL_ERROR "No sources found! Add .cpp files to src/ or apis/")
 endif()
-message(STATUS "Found ${source_count} source files")
 
 add_library(luma_client SHARED ${LUMA_SOURCES})
 
 target_include_directories(luma_client PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends
 )
 
-# Essential Linux libraries
-target_link_libraries(luma_client PRIVATE dl pthread m)
+# Linux essentials
+target_link_libraries(luma_client PRIVATE 
+    dl 
+    pthread 
+    m
+)
 
-# Dobby (if exists)
+# Dobby (optional)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/Dobby/CMakeLists.txt")
     add_subdirectory(external/Dobby EXCLUDE_FROM_ALL)
     if(TARGET dobby)
         target_link_libraries(luma_client PRIVATE dobby)
-        message(STATUS "Dobby: linked")
     endif()
 endif()
 
-# OpenGL - optional
-find_package(OpenGL QUIET)
-if(OpenGL_FOUND)
-    target_link_libraries(luma_client PRIVATE OpenGL::GL)
-    message(STATUS "OpenGL: enabled")
-else()
-    message(STATUS "OpenGL: disabled (headless build)")
-endif()
+# OpenGL loader definitions (fixes imgui_impl_opengl3_loader.h)
+target_compile_definitions(luma_client PRIVATE 
+    IMGUI_IMPL_OPENGL_LOADER_GLAD
+)
 
 set_target_properties(luma_client PROPERTIES 
     OUTPUT_NAME "luma_client"
     CXX_VISIBILITY_PRESET hidden
 )
 
-message(STATUS "SUCCESS: luma_client.so will be built!")
+message(STATUS "✅ luma_client.so ready for Linux!")
 message(STATUS "===============================================")
