@@ -19,12 +19,10 @@ add_library(imgui STATIC
 )
 target_include_directories(imgui PUBLIC imgui imgui/backends)
 
-# Include all your existing source files recursively
-file(GLOB_RECURSIVE LUMA_SOURCES 
-    src/*.c
-    src/*.cpp
-    src/modules/*.cpp
-)
+# Instead of GLOB_RECURSIVE, do two explicit globs and combine
+file(GLOB SRC_FILES "src/*.c" "src/*.cpp")
+file(GLOB MODULE_FILES "src/modules/*.cpp")
+list(APPEND LUMA_SOURCES ${SRC_FILES} ${MODULE_FILES})
 
 # Main Luma Client - all sources + ImGui
 add_library(luma_client SHARED 
@@ -48,7 +46,6 @@ target_link_libraries(luma_client
     m
 )
 
-# Exact Android x86_64 flags from your build log
 if(ANDROID)
     target_compile_options(luma_client PRIVATE
         -g -DANDROID -fdata-sections -ffunction-sections 
