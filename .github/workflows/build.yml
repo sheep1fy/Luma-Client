@@ -61,7 +61,7 @@ jobs:
             -DDOBBY_INCLUDE_DIR=${{ github.workspace }}/dobby-dist/include
 
           ninja || true
-          strip libluma_client.so || true
+          strip luma_client.so || true
 
       - name: Upload Artifact
         if: always()
