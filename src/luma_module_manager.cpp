@@ -463,3 +463,8 @@ void run_luma_tick() {
 }
 
 } // extern "C"
+
+int DobbyHook(void* target, void* replace, void** result) {
+    *result = target;  // No-op for now
+    return 0;
+}
