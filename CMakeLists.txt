@@ -53,5 +53,6 @@ add_library(luma_client SHARED ${LUMA_SOURCES} ${IMGUI_SOURCES})
 target_compile_definitions(luma_client PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
 # 7. Link Libraries
-# GLESv3 is used for mobile/bedrock rendering
-target_link_libraries(luma_client GLESv3 log)
+# FIXED: Changed from GLESv3 to GLESv2 (available on all Mesa systems)
+# OpenGL ES 2.0 is backward compatible and widely supported on Linux
+target_link_libraries(luma_client GLESv2 log)
