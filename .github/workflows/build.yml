@@ -15,14 +15,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive  # This pulls Dobby automatically
+          submodules: recursive
 
-      - name: Install build dependencies
+      - name: Install build dependencies  # <- FIXED
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build cmake build-essential \
-                                  default-jdk openjdk-17-jdk-dev  # <- FIX: Adds jni.h headers
-                                  libglfw3-dev libgl1-mesa-dev libglew-dev  # GUI/OpenGL for ImGui
+                                  default-jdk libglfw3-dev libgl1-mesa-dev libglew-dev
 
       - name: Configure CMake
         run: |
@@ -35,17 +34,8 @@ jobs:
           cd build
           ninja
 
-      - name: Strip and verify
+      - name: Verify build
         run: |
           cd build
-          strip --strip-unneeded luma_client.so || echo "No luma_client.so found"
-          ls -la *.so || echo "No .so files"
-          file luma_client.so  # Verify it's a valid x86_64 ELF shared object
-
-      - name: Upload artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: luma_client-x86_64-linux
-          path: build/luma_client.so
-          retention-days: 30  # Keep artifacts for 30 days
+          ls -la *.so
+          file luma_client.so
