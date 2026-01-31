@@ -33,19 +33,12 @@ jobs:
           git clone --depth 1 https://github.com/jmpews/Dobby.git dobby-src
           cd dobby-src
           
-          # 1. Physically remove all ARM-related source folders to prevent accidental inclusion
-          find . -type d -name "arm64" -exec rm -rf {} +
-          find . -type d -name "arm" -exec rm -rf {} +
-          find . -type d -name "aarch64" -exec rm -rf {} +
+          # Surgical fix: Delete ONLY lines that reference arm assembly files
+          # This prevents breaking the CMake if/endif logic
+          find source -name "CMakeLists.txt" -exec sed -i '/arm.*\.asm/Id' {} +
+          find source -name "CMakeLists.txt" -exec sed -i '/aarch64.*\.asm/Id' {} +
           
-          # 2. Scrub any mention of these architectures from ALL CMake files
-          find . -name "CMakeLists.txt" -exec sed -i '/arm64/Id' {} +
-          find . -name "CMakeLists.txt" -exec sed -i '/aarch64/Id' {} +
-          find . -name "CMakeLists.txt" -exec sed -i '/[^_]arm[^_]/Id' {} +
-          
-          # 3. Specifically fix the ClosureTrampolineBridge which is the main culprit
-          # We force it to only look at x86/x64
-          mkdir -p build && cd build
+          mkdir build && cd build
           cmake .. \
             -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
