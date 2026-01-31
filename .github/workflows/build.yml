@@ -1,6 +1,10 @@
-name: Luma Client CI/CD (x86_64 Linux)
+name: Luma Client CI/CD (Android x86_64)
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
   build:
@@ -9,34 +13,41 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install Linux desktop dependencies
+    - name: Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y ninja-build cmake git libglew-dev libsdl2-dev libgl1-mesa-dev libglu1-mesa-dev
-    
-    - name: Create build directory
+        sudo apt install -y 
+          cmake ninja-build 
+          openjdk-17-jdk 
+          android-sdk android-libext4-utils
+        
+    - name: Setup Android NDK
+      uses: nttld/setup-ndk@v1
+      id: setup-ndk
+      with:
+        ndk-version: r26b
+        add-to-path: true
+        
+    - name: Create Build Directory
       run: mkdir build
-    
-    - name: Configure CMake
+      
+    - name: Configure CMake (Android)
       working-directory: ./build
       run: |
         cmake .. \
           -G Ninja \
+          -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=x86_64 \
+          -DANDROID_PLATFORM=android-30 \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    
+          -DLUMA_CLIENT_ANDROID=ON
+        
     - name: Build Luma Client
       working-directory: ./build
-      run: ninja
-    
-    - name: Verify x86_64 output
-      run: |
-        ls -la build/
-        file build/libluma_client.so
-        readelf -h build/libluma_client.so | grep "Machine:"
-    
-    - name: Upload x86_64 artifact
+      run: cmake --build . --verbose
+      
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: luma-client-x86_64.so
+        name: luma-client-android-x86_64.so
         path: build/libluma_client.so
