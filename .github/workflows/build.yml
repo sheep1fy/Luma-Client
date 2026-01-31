@@ -28,27 +28,22 @@ jobs:
           unzip -q android-ndk-r26b-linux.zip
           echo "ANDROID_NDK_HOME=${{ github.workspace }}/android-ndk-r26b" >> $GITHUB_ENV
 
-      - name: Build & Patch Dobby
+      - name: Build Dobby (x86_64 only)
         run: |
           git clone --depth 1 https://github.com/jmpews/Dobby.git dobby-src
           cd dobby-src
-          
-          # Surgical fix: Delete ONLY lines that reference arm assembly files
-          # This prevents breaking the CMake if/endif logic
-          find source -name "CMakeLists.txt" -exec sed -i '/arm.*\.asm/Id' {} +
-          find source -name "CMakeLists.txt" -exec sed -i '/aarch64.*\.asm/Id' {} +
-          
+
           mkdir build && cd build
           cmake .. \
             -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=x86_64 \
+            -DCMAKE_ANDROID_ARCH_ABI=x86_64 \
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
             -DDOBBY_DEBUG=OFF
-          
+
           ninja
-          
+
           echo "DOBBY_LIB_DIR=$(pwd)" >> $GITHUB_ENV
           echo "DOBBY_INC_DIR=$(dirname $(pwd))/include" >> $GITHUB_ENV
 
@@ -58,12 +53,12 @@ jobs:
           cmake .. \
             -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=x86_64 \
+            -DCMAKE_ANDROID_ARCH_ABI=x86_64 \
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
             -DDOBBY_INCLUDE_DIR=${{ env.DOBBY_INC_DIR }} \
             -DDOBBY_LIBRARY=${{ env.DOBBY_LIB_DIR }}/libdobby.a
-          
+
           ninja
           ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip libluma_client.so
 
