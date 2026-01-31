@@ -67,5 +67,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: luma-client-x86_64-linux
-          path: build/libluma_client.so
+          name: luma-client
+          path: build/luma_client.so
