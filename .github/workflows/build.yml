@@ -13,12 +13,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup JDK
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
     - name: Setup Android NDK
       id: setup-ndk
       uses: nttld/setup-ndk@v1
@@ -26,7 +20,7 @@ jobs:
         ndk-version: r26b
         add-to-path: true
 
-    - name: Install Dependencies and Latest CMake
+    - name: Install Latest CMake and Ninja
       run: |
         sudo apt-get update
         sudo apt-get remove -y cmake
@@ -35,6 +29,9 @@ jobs:
         sudo apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
         sudo apt-get update
         sudo apt-get install -y cmake ninja-build
+
+    - name: Check CMake version
+      run: cmake --version
 
     - name: Create Build Directory
       run: mkdir build
