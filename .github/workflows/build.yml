@@ -37,6 +37,7 @@ jobs:
           cmake .. \
             -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=x86_64 \
             -DCMAKE_ANDROID_ARCH_ABI=x86_64 \
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
@@ -53,11 +54,12 @@ jobs:
           cmake .. \
             -GNinja \
             -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=x86_64 \
             -DCMAKE_ANDROID_ARCH_ABI=x86_64 \
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
-            -DDOBBY_INCLUDE_DIR=${{ env.DOBBY_INC_DIR }} \
-            -DDOBBY_LIBRARY=${{ env.DOBBY_LIB_DIR }}/libdobby.a
+            -DDOBBY_LIBRARY=${{ env.DOBBY_LIB_DIR }}/libdobby.a \
+            -DDOBBY_INCLUDE_DIR=${{ env.DOBBY_INC_DIR }}
 
           ninja
           ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip libluma_client.so
