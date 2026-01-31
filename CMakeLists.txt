@@ -19,14 +19,14 @@ add_library(imgui STATIC
 )
 target_include_directories(imgui PUBLIC imgui imgui/backends)
 
-# **CRITICAL FIX**: Include ALL your existing source files
+# Include all your existing source files recursively
 file(GLOB_RECURSIVE LUMA_SOURCES 
     src/*.c
     src/*.cpp
-    src/modules/*.cpp  # Your modules are here
+    src/modules/*.cpp
 )
 
-# Main Luma Client - ALL SOURCES + ImGui
+# Main Luma Client - all sources + ImGui
 add_library(luma_client SHARED 
     ${LUMA_SOURCES}
 )
@@ -35,7 +35,7 @@ target_include_directories(luma_client PRIVATE
     .
     include
     src
-    src/modules  # Your module headers
+    src/modules
     imgui
 )
 
