@@ -13,25 +13,28 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install Dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y 
-          cmake ninja-build 
-          openjdk-17-jdk 
-          android-sdk android-libext4-utils
+    - name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
         
     - name: Setup Android NDK
-      uses: nttld/setup-ndk@v1
       id: setup-ndk
+      uses: nttld/setup-ndk@v1
       with:
         ndk-version: r26b
         add-to-path: true
         
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake ninja-build
+        
     - name: Create Build Directory
       run: mkdir build
       
-    - name: Configure CMake (Android)
+    - name: Configure CMake (Android x86_64)
       working-directory: ./build
       run: |
         cmake .. \
@@ -39,14 +42,13 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
           -DANDROID_ABI=x86_64 \
           -DANDROID_PLATFORM=android-30 \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DLUMA_CLIENT_ANDROID=ON
+          -DCMAKE_BUILD_TYPE=Release
         
     - name: Build Luma Client
       working-directory: ./build
       run: cmake --build . --verbose
       
-    - name: Upload Artifact
+    - name: Upload Android Artifact
       uses: actions/upload-artifact@v4
       with:
         name: luma-client-android-x86_64.so
