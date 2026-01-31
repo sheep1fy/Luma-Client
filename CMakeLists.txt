@@ -127,7 +127,7 @@ target_link_options(luma_client PRIVATE
 # 10. OUTPUT CONFIGURATION
 # ======================================================================
 set_target_properties(luma_client PROPERTIES
-    PREFIX "lib"
+    PREFIX ""
     SUFFIX ".so"
     OUTPUT_NAME "luma_client"
 )
