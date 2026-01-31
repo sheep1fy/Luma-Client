@@ -33,7 +33,7 @@ set(IMGUI_SOURCES
 )
 
 set(LUMA_SOURCES
-    src/main.cpp
+    src/luma_linux.c
     src/apis/bedrock_1_21_30.cpp
     ${IMGUI_SOURCES}
 )
