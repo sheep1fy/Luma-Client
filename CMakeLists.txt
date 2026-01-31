@@ -3,8 +3,8 @@ project(luma_client)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# CRITICAL: Define IMGUI_IMPL_OPENGL_ES3 globally BEFORE any sources are compiled
-add_compile_definitions(IMGUI_IMPL_OPENGL_ES3)
+# Use ES2 for Android NDK compatibility
+add_compile_definitions(IMGUI_IMPL_OPENGL_ES2)
 
 # 1. Define Paths
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
@@ -52,7 +52,7 @@ set(LUMA_SOURCES
 # 5. Build Shared Library
 add_library(luma_client SHARED ${LUMA_SOURCES} ${IMGUI_SOURCES})
 
-# 6. Additional target-specific definitions
+# 6. Additional definitions
 target_compile_definitions(luma_client PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
 # 7. Link Libraries
