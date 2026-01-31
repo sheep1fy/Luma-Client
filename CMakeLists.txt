@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18.1)
 project(LumaClient VERSION 1.0.1 LANGUAGES C CXX)
 
-# Global ImGui flags
+# Global flags
 add_compile_definitions(
     IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
     IMGUI_IMPL_OPENGL_ES3=0
@@ -9,7 +9,7 @@ add_compile_definitions(
     luma_client_EXPORTS
 )
 
-# ImGui static library (CORRECTED - only specific files)
+# ImGui static library
 add_library(imgui STATIC
     imgui/imgui.cpp
     imgui/imgui_draw.cpp
@@ -19,15 +19,23 @@ add_library(imgui STATIC
 )
 target_include_directories(imgui PUBLIC imgui imgui/backends)
 
-# Main Luma Client shared library - ONLY luma_linux.c + ImGui
+# **CRITICAL FIX**: Include ALL your existing source files
+file(GLOB_RECURSIVE LUMA_SOURCES 
+    src/*.c
+    src/*.cpp
+    src/modules/*.cpp  # Your modules are here
+)
+
+# Main Luma Client - ALL SOURCES + ImGui
 add_library(luma_client SHARED 
-    src/luma_linux.c
+    ${LUMA_SOURCES}
 )
 
 target_include_directories(luma_client PRIVATE
     .
     include
     src
+    src/modules  # Your module headers
     imgui
 )
 
@@ -36,29 +44,17 @@ target_link_libraries(luma_client
     GLESv3
     log
     dl
-    atomic  # ← CRITICAL: -latomic was in your build log
-    m       # ← CRITICAL: -lm was in your build log
+    atomic
+    m
 )
 
-# Android x86_64 optimizations (EXACTLY matching your build log)
+# Exact Android x86_64 flags from your build log
 if(ANDROID)
     target_compile_options(luma_client PRIVATE
-        -g
-        -DANDROID
-        -fdata-sections
-        -ffunction-sections
-        -funwind-tables
-        -fstack-protector-strong
-        -no-canonical-prefixes
-        -D_FORTIFY_SOURCE=2
-        -Wformat
-        -Werror=format-security
-        -O3
-        -DNDEBUG
-        -fPIC
-        -march=x86-64
-        -flto
-        -fvisibility=hidden
+        -g -DANDROID -fdata-sections -ffunction-sections 
+        -funwind-tables -fstack-protector-strong -no-canonical-prefixes 
+        -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security 
+        -O3 -DNDEBUG -fPIC -march=x86-64 -flto -fvisibility=hidden
     )
 endif()
 
