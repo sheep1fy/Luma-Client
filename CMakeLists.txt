@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.19)
 project(luma_client)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -17,13 +17,12 @@ include_directories(${IMGUI_DIR})
 include_directories(${IMGUI_DIR}/backends)
 include_directories(${APIS_DIR})
 
-# 3. Collect ImGui Sources (Required to fix your "file not found" error)
+# 3. Collect ImGui Sources (imgui_demo.cpp excluded - not needed for runtime)
 set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
