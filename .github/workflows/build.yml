@@ -40,4 +40,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: luma_client-android-x86_64
-        path: build/luma_client.so
+        path: build/libluma_client.so
