@@ -55,9 +55,5 @@ target_compile_definitions(luma_client PRIVATE
     IMGUI_IMPL_OPENGL_ES3
 )
 
-# 7. Link Libraries - FIXED: Platform-specific linking
-if(ANDROID)
-    target_link_libraries(luma_client GLESv3 EGL log)
-else()
-    target_link_libraries(luma_client GLESv2 log)
-endif()
+# 7. Link Libraries - FIXED: Use GLESv2 for mcpelauncher compatibility
+target_link_libraries(luma_client GLESv2 log)
