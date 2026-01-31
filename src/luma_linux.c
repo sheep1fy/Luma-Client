@@ -1,13 +1,6 @@
 // ============================================================================
-// luma_linux.c - Entry Point & Dobby Hook Implementations
+// luma_linux.c - Entry Point & Dobby Hook Implementations (GLES3 Fixed)
 // ============================================================================
-// This file handles:
-// 1. Library initialization (constructor)
-// 2. Dobby hook setup for Keyboard::feed and ScreenContext::render
-// 3. Menu toggle via 'K' key
-// 4. Render overlay with glassmorphism blur effect
-// ============================================================================
-
 #include <jni.h>
 #include <android/log.h>
 #include <stdbool.h>
@@ -27,168 +20,88 @@
 // ============================================================================
 // DOBBY HOOKING LIBRARY
 // ============================================================================
-// DobbyHook is the primary function hooking mechanism
-// Parameters:
-//   target:  Original function address to hook
-//   replace: Our replacement function
-//   result:  Pointer to store the original function (for calling later)
-// Returns: 0 on success, non-zero on failure
 extern int DobbyHook(void* target, void* replace, void** result);
 
 // ============================================================================
 // ORIGINAL FUNCTION POINTERS
 // ============================================================================
-// These store the addresses of the original game functions so we can
-// call them after our hook logic executes
-
-// Keyboard::feed - Handles all keyboard input in the game
-// Signature: void Keyboard::feed(int key, int action, int method)
 static void (*Keyboard_feed_original)(int key, int action, int method) = NULL;
-
-// ScreenContext::render - Main rendering loop for the game's UI
-// Signature: void ScreenContext::render(ScreenContext* this)
 static void (*ScreenContext_render_original)(void* screen_context) = NULL;
 
 // ============================================================================
-// MENU STATE (Shared with C++)
+// MENU STATE
 // ============================================================================
-extern bool menu_open; // Defined in luma_module_manager.cpp
+extern bool menu_open;
 
 // ============================================================================
 // HOOK 1: Keyboard::feed - Input Interception
 // ============================================================================
-// This hook intercepts all keyboard input before the game processes it.
-// We use it to detect the 'K' key press to toggle the Luma menu.
-//
-// Minecraft Bedrock uses scan codes for keys:
-//   0x4B = K key
-//   action: 0 = key release, 1 = key press, 2 = key repeat
-//   method: input method type (0 = keyboard, 1 = gamepad, etc.)
-// ============================================================================
 static void Keyboard_feed_hook(int key, int action, int method) {
-    // Detect 'K' key press (scan code 0x4B, action 1 = press)
     if (key == 0x4B && action == 1) {
         LOGI("Menu toggle key pressed");
         toggle_luma_menu();
     }
     
-    // IMPORTANT: Always call the original function to ensure the game
-    // still receives all input events. Otherwise, the game won't respond
-    // to any keyboard input!
     if (Keyboard_feed_original) {
         Keyboard_feed_original(key, action, method);
     }
 }
 
 // ============================================================================
-// HOOK 2: ScreenContext::render - Render Loop Interception
+// SIMPLIFIED GLES3 FULLSCREEN QUAD (No shaders needed)
 // ============================================================================
-// This hook is called every frame during the game's rendering phase.
-// We use it to:
-// 1. Render the original game content
-// 2. Apply a glassmorphism overlay when the menu is open
-// 3. Draw our custom ImGui interface on top
-//
-// The glassmorphism effect is achieved by rendering a semi-transparent
-// black quad over the entire screen, creating a "blur" effect without
-// expensive Gaussian blur computations.
+// Pre-defined vertices for fullscreen quad in NDC (-1 to 1)
+static const GLfloat fullscreen_quad[] = {
+    -1.0f, -1.0f,  // bottom-left
+     1.0f, -1.0f,  // bottom-right
+    -1.0f,  1.0f,  // top-left
+     1.0f,  1.0f   // top-right
+};
+
+// ============================================================================
+// HOOK 2: ScreenContext::render - Render Loop (GLES3 Fixed)
 // ============================================================================
 static void ScreenContext_render_hook(void* screen_context) {
-    // ========================================================================
-    // STEP 1: Render the original game content
-    // ========================================================================
-    // This ensures the game's graphics are drawn first, and our UI
-    // appears as an overlay on top
+    // STEP 1: Render original game content
     if (ScreenContext_render_original) {
         ScreenContext_render_original(screen_context);
     }
     
-    // ========================================================================
-    // STEP 2: Apply glassmorphism overlay (when menu is open)
-    // ========================================================================
-    // We render a semi-transparent black rectangle over the entire viewport
-    // to create a dimming/blur effect, making the menu stand out
+    // STEP 2: Glassmorphism overlay (GLES3 compatible)
     if (menu_open) {
-        // Enable alpha blending for transparency
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        
-        // Get viewport dimensions
-        GLint viewport[4];
-        glGetIntegerv(GL_VIEWPORT, viewport);
-        GLint vp_width = viewport[2];
-        GLint vp_height = viewport[3];
-        
-        // Disable depth testing (we want this to render on top)
         glDisable(GL_DEPTH_TEST);
         
-        // Simple fullscreen quad using immediate mode (legacy but works)
-        // Color: Black with 40% alpha (RGBA: 0, 0, 0, 0.4)
-        // This creates the "glassmorphism" dimming effect
+        // Bind vertex attribute (attribute 0 = position)
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, fullscreen_quad);
         
-        // Note: For production, you'd use a proper shader and VBO,
-        // but this works fine for a simple overlay
-        glMatrixMode(GL_PROJECTION);
-        glPushMatrix();
-        glLoadIdentity();
-        glOrthof(0, vp_width, vp_height, 0, -1, 1);
+        // Draw fullscreen quad (black 40% alpha)
+        glClearColor(0.0f, 0.0f, 0.0f, 0.4f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-        glLoadIdentity();
-        
-        // Render the dimming quad
-        glColor4f(0.0f, 0.0f, 0.0f, 0.4f);
-        glBegin(GL_QUADS);
-            glVertex2f(0, 0);
-            glVertex2f(vp_width, 0);
-            glVertex2f(vp_width, vp_height);
-            glVertex2f(0, vp_height);
-        glEnd();
-        
-        // Restore matrices
-        glPopMatrix();
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        
-        // Re-enable depth testing
+        // Cleanup
+        glDisableVertexAttribArray(0);
         glEnable(GL_DEPTH_TEST);
+        glDisable(GL_BLEND);
     }
     
-    // ========================================================================
     // STEP 3: Render ImGui UI
-    // ========================================================================
-    // This calls into our C++ code (luma_module_manager.cpp) which handles
-    // all the ImGui rendering logic for the modern UI
     run_luma_tick();
 }
 
 // ============================================================================
-// HOOK INSTALLATION - Called During Mod Initialization
+// HOOK INSTALLATION
 // ============================================================================
 static void install_hooks() {
     LOGI("========================================");
     LOGI("  LUMA CLIENT - Installing Hooks");
     LOGI("========================================");
     
-    // ========================================================================
-    // Find Keyboard::feed symbol
-    // ========================================================================
-    // Symbol name: _ZN8Keyboard4feedEiii
-    // This is the mangled C++ name for: Keyboard::feed(int, int, int)
-    //
-    // dlsym searches for this symbol in all loaded libraries (RTLD_DEFAULT)
     void* keyboard_feed_addr = dlsym(RTLD_DEFAULT, "_ZN8Keyboard4feedEiii");
-    
     if (keyboard_feed_addr) {
-        // Install the hook
-        int result = DobbyHook(
-            keyboard_feed_addr,              // Target function
-            (void*)Keyboard_feed_hook,       // Our hook function
-            (void**)&Keyboard_feed_original  // Store original here
-        );
-        
+        int result = DobbyHook(keyboard_feed_addr, (void*)Keyboard_feed_hook, (void**)&Keyboard_feed_original);
         if (result == 0) {
             LOGI("✓ Keyboard::feed hooked successfully");
         } else {
@@ -196,25 +109,11 @@ static void install_hooks() {
         }
     } else {
         LOGW("✗ Keyboard::feed symbol not found");
-        LOGW("  The game may have been updated with new symbol names");
-        LOGW("  Try using: nm -D libminecraftpe.so | grep Keyboard");
     }
     
-    // ========================================================================
-    // Find ScreenContext::render symbol
-    // ========================================================================
-    // Symbol name: _ZN13ScreenContext6renderEv
-    // This is the mangled C++ name for: ScreenContext::render(void)
     void* screen_render_addr = dlsym(RTLD_DEFAULT, "_ZN13ScreenContext6renderEv");
-    
     if (screen_render_addr) {
-        // Install the hook
-        int result = DobbyHook(
-            screen_render_addr,                   // Target function
-            (void*)ScreenContext_render_hook,     // Our hook function
-            (void**)&ScreenContext_render_original // Store original here
-        );
-        
+        int result = DobbyHook(screen_render_addr, (void*)ScreenContext_render_hook, (void**)&ScreenContext_render_original);
         if (result == 0) {
             LOGI("✓ ScreenContext::render hooked successfully");
         } else {
@@ -222,8 +121,6 @@ static void install_hooks() {
         }
     } else {
         LOGW("✗ ScreenContext::render symbol not found");
-        LOGW("  The game may have been updated with new symbol names");
-        LOGW("  Try using: nm -D libminecraftpe.so | grep ScreenContext");
     }
     
     LOGI("========================================");
@@ -232,27 +129,18 @@ static void install_hooks() {
 }
 
 // ============================================================================
-// MOD ENTRY POINT - Called When Library is Loaded
-// ============================================================================
-// The __attribute__((constructor)) tells the linker to call this function
-// automatically when the shared library (.so) is loaded into memory.
-//
-// This happens early in the game startup process, before main() runs.
+// MOD ENTRY POINT
 // ============================================================================
 __attribute__((constructor))
 static void luma_client_init() {
     LOGI("========================================");
     LOGI("  LUMA CLIENT v1.0.1");
-    LOGI("  High-Performance Utility Mod");
     LOGI("  Platform: mcpelauncher (Linux x86_64)");
     LOGI("========================================");
     
-    // Initialize the C++ module manager
-    // This sets up ImGui and the module registry
     init_luma_manager();
     LOGI("✓ Module manager initialized");
     
-    // Install all hooks
     install_hooks();
     
     LOGI("========================================");
@@ -261,15 +149,7 @@ static void luma_client_init() {
     LOGI("========================================");
 }
 
-// ============================================================================
-// OPTIONAL: Mod Cleanup on Unload
-// ============================================================================
-// This is called when the library is unloaded (rarely happens in practice)
 __attribute__((destructor))
 static void luma_client_cleanup() {
     LOGI("Luma Client unloading...");
-    
-    // TODO: Cleanup ImGui resources if needed
-    // ImGui_ImplOpenGL3_Shutdown();
-    // ImGui::DestroyContext();
 }
