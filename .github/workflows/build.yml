@@ -15,36 +15,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: true   # important so external/Dobby is present
+          submodules: recursive  # This pulls Dobby automatically
 
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            ninja-build \
-            cmake \
-            build-essential
+          sudo apt-get install -y ninja-build cmake build-essential
 
-      - name: Configure (CMake)
+      - name: Configure CMake
         run: |
           mkdir -p build
           cd build
           cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build (ninja)
+      - name: Build
         run: |
           cd build
           ninja
 
-      - name: Strip shared library
+      - name: Strip and verify
         run: |
           cd build
-          if [ -f libluma_client.so ]; then
-            strip libluma_client.so
-          fi
+          strip luma_client.so || echo "No luma_client.so found"
+          ls -la *.so || echo "No .so files"
 
       - name: Upload artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: luma_client-x86_64
-          path: build/libluma_client.so
+          name: luma_client-x86_64-linux
+          path: build/luma_client.so
