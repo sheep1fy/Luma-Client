@@ -17,7 +17,7 @@ include_directories(${IMGUI_DIR})
 include_directories(${IMGUI_DIR}/backends)
 include_directories(${APIS_DIR})
 
-# 3. Collect ImGui Sources (imgui_demo.cpp excluded - not needed for runtime)
+# 3. Collect ImGui Sources
 set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
@@ -49,26 +49,15 @@ set(LUMA_SOURCES
 # 5. Build Shared Library
 add_library(luma_client SHARED ${LUMA_SOURCES} ${IMGUI_SOURCES})
 
-# 6. Define ImGui Math Operators (fixes ImVec2 addition error)
-# Also define IMGUI_IMPL_OPENGL_ES3 to use OpenGL ES 3.0 functions
+# 6. Compile Definitions - FIXED: Added IMGUI_IMPL_OPENGL_ES3
 target_compile_definitions(luma_client PRIVATE 
     IMGUI_DEFINE_MATH_OPERATORS
     IMGUI_IMPL_OPENGL_ES3
 )
 
-# 7. Link Libraries
-# Different libraries needed for Android vs Linux
+# 7. Link Libraries - FIXED: Platform-specific linking
 if(ANDROID)
-    # Android: Link against Android NDK libraries
-    target_link_libraries(luma_client 
-        GLESv3      # Android has GLESv3 in the NDK
-        EGL         # EGL is needed for Android
-        log         # Android logging
-    )
+    target_link_libraries(luma_client GLESv3 EGL log)
 else()
-    # Linux: Link against Mesa libraries
-    target_link_libraries(luma_client 
-        GLESv2      # Mesa provides all ES versions via GLESv2
-        log         # Android log library (provided by mcpelauncher)
-    )
+    target_link_libraries(luma_client GLESv2 log)
 endif()
