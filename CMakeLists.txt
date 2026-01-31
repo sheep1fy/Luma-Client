@@ -42,32 +42,33 @@ if(LUMA_USE_DOBBY AND IS_X86_64)
     endif()
 endif()
 
-# EXPLICIT source lists - no more globbing issues
+# EXPLICIT source lists - adjust these to your actual files!
 set(LUMA_SOURCES
-    # Your main sources
-    src/main.cpp                    # adjust to your actual entry point
+    # Main entry point - UPDATE THIS PATH
+    src/main.cpp
+    
+    # Bedrock APIs
     apis/bedrock_1_21_30.cpp
     
-    # ImGui core (REQUIRED)
+    # ImGui core (all required)
     imgui/imgui.cpp
     imgui/imgui_draw.cpp
     imgui/imgui_tables.cpp
     imgui/imgui_widgets.cpp
-    imgui/imgui_demo.cpp           # optional but usually included
+    # imgui/imgui_demo.cpp  # Optional - comment out if not needed
     
-    # ImGui backends (only ones you actually use)
+    # Linux backend ONLY
     imgui/backends/imgui_impl_opengl3.cpp
-    # imgui/backends/imgui_impl_android.cpp  # comment out if not needed for Linux
 )
 
 add_library(luma_client SHARED ${LUMA_SOURCES})
 
-# FIXED include directories - imgui/ is now included
+# FIXED include directories
 target_include_directories(luma_client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/imgui           # ← FIXES imgui.h missing
-    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends  # ← backend headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends
 )
 
 # Link Dobby if available
@@ -79,12 +80,19 @@ elseif(TARGET dobby_static)
     target_link_libraries(luma_client PRIVATE dobby_static)
 endif()
 
-# Essential Linux libraries
+# Essential Linux libraries (ALWAYS available)
 target_link_libraries(luma_client PRIVATE dl pthread m)
 
-# OpenGL (for imgui_impl_opengl3)
-find_package(OpenGL REQUIRED)
-target_link_libraries(luma_client PRIVATE OpenGL::GL)
+# OpenGL - OPTIONAL and with fallback
+find_package(OpenGL QUIET)
+if(OpenGL_FOUND)
+    message(STATUS "OpenGL: found")
+    target_link_libraries(luma_client PRIVATE OpenGL::GL)
+    target_compile_definitions(luma_client PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD)
+else()
+    message(WARNING "OpenGL: not found - ImGui will use GLAD loader")
+    # Still include OpenGL3 backend but it won't link
+endif()
 
 set_target_properties(luma_client PROPERTIES 
     OUTPUT_NAME "luma_client"
