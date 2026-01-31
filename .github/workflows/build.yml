@@ -13,59 +13,56 @@ jobs:
     name: Build Luma (x86_64)
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r26b
-
     steps:
       - name: Checkout Luma Client
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Setup Android NDK r26b
+      - name: Install Linux dependencies
         run: |
-          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
-          unzip -q android-ndk-r26b-linux.zip
-          echo "ANDROID_NDK_HOME=${{ github.workspace }}/android-ndk-r26b" >> $GITHUB_ENV
+          sudo apt update
+          sudo apt install -y cmake ninja-build build-essential pkg-config
 
-      - name: Build Dobby (x86_64 only)
+      - name: Build Dobby (Linux x86_64 ONLY - NO ANDROID)
         run: |
           git clone --depth 1 https://github.com/jmpews/Dobby.git dobby-src
           cd dobby-src
-
+          
           mkdir build && cd build
           cmake .. \
             -GNinja \
-            -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=x86_64 \
-            -DCMAKE_ANDROID_ARCH_ABI=x86_64 \
-            -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
-            -DDOBBY_DEBUG=OFF
+            -DDOBBY_DEBUG=OFF \
+            -DDOBBY_ENABLE_UNIT_TEST=OFF \
+            -DDOBBY_ARCH=x86_64 \
+            -DDOBBY_X86_64=ON \
+            -DDOBBY_X86=ON \
+            -DDOBBY_ARM64=OFF \
+            -DDOBBY_ARM32=OFF
 
-          ninja
+          ninja dobby
+          
+          # Copy prebuilt dobby
+          mkdir -p ../../dobby-dist/lib ../../dobby-dist/include
+          cp libdobby.a ../../dobby-dist/lib/
+          cp -r ../include/* ../../dobby-dist/include/
+          cd ../..
 
-          echo "DOBBY_LIB_DIR=$(pwd)" >> $GITHUB_ENV
-          echo "DOBBY_INC_DIR=$(dirname $(pwd))/include" >> $GITHUB_ENV
-
-      - name: Configure and Build Luma Client
+      - name: Configure and Build Luma Client (Linux x86_64)
         run: |
           mkdir build && cd build
           cmake .. \
             -GNinja \
-            -DCMAKE_TOOLCHAIN_FILE=${{ env.ANDROID_NDK_HOME }}/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=x86_64 \
-            -DCMAKE_ANDROID_ARCH_ABI=x86_64 \
-            -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
-            -DDOBBY_LIBRARY=${{ env.DOBBY_LIB_DIR }}/libdobby.a \
-            -DDOBBY_INCLUDE_DIR=${{ env.DOBBY_INC_DIR }}
+            -DDOBBY_LIBRARY=${{ github.workspace }}/dobby-dist/lib/libdobby.a \
+            -DDOBBY_INCLUDE_DIR=${{ github.workspace }}/dobby-dist/include
 
           ninja
-          ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip libluma_client.so
+          strip libluma_client.so
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: luma-client-x86_64
+          name: luma-client-x86_64-linux
           path: build/libluma_client.so
