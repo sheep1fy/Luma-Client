@@ -2,70 +2,49 @@ name: Luma Client CI/CD (x86_64 Only)
 
 on:
   push:
-    branches: [ "main", "master" ]
-    tags: [ "v*" ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
+    branches: [ main, master ]
 
 jobs:
-  build:
+  build-luma-x86_64:
     name: Build Luma (x86_64)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Luma Client
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: true   # important so external/Dobby is present
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
-          sudo apt update
-          sudo apt install -y cmake ninja-build build-essential gcc g++ pkg-config
+          sudo apt-get update
+          sudo apt-get install -y \
+            ninja-build \
+            cmake \
+            build-essential
 
-      - name: Build Dobby (x86_64 Linux ONLY)
+      - name: Configure (CMake)
         run: |
-          git clone --depth 1 https://github.com/jmpews/Dobby.git dobby-src
-          cd dobby-src
-          
-          mkdir build && cd build
-          cmake .. \
-            -GNinja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DDOBBY_DEBUG=OFF \
-            -DDOBBY_ENABLE_UNIT_TEST=OFF \
-            -DDOBBY_ARCH=x86_64 \
-            -DDOBBY_X86_64=ON \
-            -DDOBBY_ARM64=OFF \
-            -DDOBBY_ARM32=OFF \
-            -DCMAKE_C_FLAGS="-w" \
-            -DCMAKE_CXX_FLAGS="-w"
+          mkdir -p build
+          cd build
+          cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-          ninja || true  # Ignore warnings
-          
-          mkdir -p ../../dobby-dist/lib ../../dobby-dist/include
-          cp libdobby.a ../../dobby-dist/lib/ || true
-          cp -r ../include/* ../../dobby-dist/include/ || true
-          cd ../..
-
-      - name: Configure and Build Luma Client
+      - name: Build (ninja)
         run: |
-          mkdir build && cd build
-          cmake .. \
-            -GNinja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_FLAGS="-w" \
-            -DCMAKE_CXX_FLAGS="-w" \
-            -DDOBBY_LIBRARY=${{ github.workspace }}/dobby-dist/lib/libdobby.a \
-            -DDOBBY_INCLUDE_DIR=${{ github.workspace }}/dobby-dist/include
+          cd build
+          ninja
 
-          ninja || true
-          strip luma_client.so || true
+      - name: Strip shared library
+        run: |
+          cd build
+          if [ -f libluma_client.so ]; then
+            strip libluma_client.so
+          fi
 
-      - name: Upload Artifact
-        if: always()
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: luma-client
-          path: build/luma_client.so
+          name: luma_client-x86_64
+          path: build/libluma_client.so
