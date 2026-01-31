@@ -9,16 +9,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Setup JDK
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
-        
+
     - name: Setup Android NDK
       id: setup-ndk
       uses: nttld/setup-ndk@v1
@@ -26,17 +26,19 @@ jobs:
         ndk-version: r26b
         add-to-path: true
 
-    - name: Install CMake 3.26
-      uses: lukka/get-cmake@v3.12.0
-      with:
-        version: '3.26.4'
-        
-    - name: Install Ninja
-      run: sudo apt update && sudo apt install -y ninja-build
-        
+    - name: Install Dependencies and Latest CMake
+      run: |
+        sudo apt-get update
+        sudo apt-get remove -y cmake
+        sudo apt-get install -y software-properties-common lsb-release wget
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | sudo apt-key add -
+        sudo apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build
+
     - name: Create Build Directory
       run: mkdir build
-      
+
     - name: Configure CMake (Android x86_64)
       working-directory: ./build
       run: |
@@ -46,11 +48,11 @@ jobs:
           -DANDROID_ABI=x86_64 \
           -DANDROID_PLATFORM=android-30 \
           -DCMAKE_BUILD_TYPE=Release
-        
+
     - name: Build Luma Client
       working-directory: ./build
       run: cmake --build . --verbose
-      
+
     - name: Upload Android Artifact
       uses: actions/upload-artifact@v4
       with:
