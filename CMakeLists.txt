@@ -22,6 +22,10 @@ target_include_directories(imgui PUBLIC imgui imgui/backends)
 # Main Luma Client shared library (.so)
 add_library(luma_client SHARED 
     src/luma_linux.c
+    
+    # ADD THESE MISSING FILES - they contain your undefined symbols:
+    src/luma_module_manager.cpp    # init_luma_manager()
+    src/menu.cpp                   # toggle_luma_menu(), menu_open, run_luma_tick()
 )
 
 target_include_directories(luma_client PRIVATE
