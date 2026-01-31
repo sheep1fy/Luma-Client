@@ -23,67 +23,68 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i.86")
     set(IS_X86_64 TRUE)
 endif()
 
-# Dobby handling - optional and architecture-specific
+# Dobby handling
 option(LUMA_USE_DOBBY "Enable Dobby hooking library" ${IS_X86_64})
 set(LUMA_DOBBY_TARGET "")
 
 if(LUMA_USE_DOBBY AND IS_X86_64)
-    message(STATUS "Checking for Dobby...")
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/Dobby/CMakeLists.txt")
         message(STATUS "Dobby found, building...")
         add_subdirectory(external/Dobby EXCLUDE_FROM_ALL)
         
-        # Try common Dobby target names
-        if(TARGET dobby)
-            set(LUMA_DOBBY_TARGET dobby)
-        elseif(TARGET Dobby)
-            set(LUMA_DOBBY_TARGET Dobby)
-        elseif(TARGET dobby_static)
-            set(LUMA_DOBBY_TARGET dobby_static)
-        endif()
-        
-        if(LUMA_DOBBY_TARGET)
-            message(STATUS "Dobby target: ${LUMA_DOBBY_TARGET}")
+        if(TARGET dobby OR TARGET Dobby OR TARGET dobby_static)
+            message(STATUS "Dobby: enabled")
         else()
-            message(WARNING "Dobby built but no compatible target found")
+            message(WARNING "Dobby built but no target found")
         endif()
     else()
-        message(WARNING "Dobby directory missing: external/Dobby/CMakeLists.txt")
-        message(WARNING "Disabling Dobby - add with: git submodule add https://github.com/jmpews/Dobby external/Dobby")
+        message(WARNING "Dobby missing - continuing without")
     endif()
-else()
-    message(STATUS "Dobby: disabled (${CMAKE_SYSTEM_PROCESSOR})")
 endif()
 
-# Your source files (update these paths to match your actual files)
-file(GLOB_RECURSE LUMA_SOURCES 
-    src/*.cpp 
-    src/*.c
-    *.cpp 
-    *.c
+# EXPLICIT source lists - no more globbing issues
+set(LUMA_SOURCES
+    # Your main sources
+    src/main.cpp                    # adjust to your actual entry point
+    apis/bedrock_1_21_30.cpp
+    
+    # ImGui core (REQUIRED)
+    imgui/imgui.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+    imgui/imgui_demo.cpp           # optional but usually included
+    
+    # ImGui backends (only ones you actually use)
+    imgui/backends/imgui_impl_opengl3.cpp
+    # imgui/backends/imgui_impl_android.cpp  # comment out if not needed for Linux
 )
 
-# Create shared library
 add_library(luma_client SHARED ${LUMA_SOURCES})
 
-# Includes
-target_include_directories(luma_client PRIVATE 
-    include/
-    src/
-    # add your include dirs here
+# FIXED include directories - imgui/ is now included
+target_include_directories(luma_client PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui           # ← FIXES imgui.h missing
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends  # ← backend headers
 )
 
 # Link Dobby if available
-if(LUMA_DOBBY_TARGET)
-    target_link_libraries(luma_client PRIVATE ${LUMA_DOBBY_TARGET})
+if(TARGET dobby)
+    target_link_libraries(luma_client PRIVATE dobby)
+elseif(TARGET Dobby)
+    target_link_libraries(luma_client PRIVATE Dobby)
+elseif(TARGET dobby_static)
+    target_link_libraries(luma_client PRIVATE dobby_static)
 endif()
 
-# Common Linux libraries for a Minecraft client mod
-target_link_libraries(luma_client PRIVATE 
-    dl 
-    pthread 
-    m
-)
+# Essential Linux libraries
+target_link_libraries(luma_client PRIVATE dl pthread m)
+
+# OpenGL (for imgui_impl_opengl3)
+find_package(OpenGL REQUIRED)
+target_link_libraries(luma_client PRIVATE OpenGL::GL)
 
 set_target_properties(luma_client PROPERTIES 
     OUTPUT_NAME "luma_client"
