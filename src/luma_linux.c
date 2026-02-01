@@ -1,12 +1,10 @@
 // ============================================================================
-// luma_linux.c - OpenGL Function Hooking (Android & Linux compatible)
+// luma_linux.c - Linux / Android OpenGL hook + ImGui keybind
 // ============================================================================
 
 #include <stdio.h>
 #include <stdbool.h>
 #include <dlfcn.h>
-#include <string.h>
-#include <unistd.h>
 
 /* =========================
    OpenGL / GLES Compatibility
@@ -15,8 +13,6 @@
 #ifdef ANDROID
     #include <GLES2/gl2.h>
     #include <GLES2/gl2ext.h>
-
-    // OpenGL ES has no fixed-function pipeline
     #ifndef glColor4f
         #define glColor4f(r, g, b, a) ((void)0)
     #endif
@@ -25,7 +21,7 @@
 #endif
 
 /* =========================
-   C <-> C++ Function Bridges
+   C ↔ C++ Bridges
    ========================= */
 
 #ifdef __cplusplus
@@ -34,6 +30,7 @@ extern "C" {
 
 void luma_gui_render(void);
 void luma_core_init(void);
+bool luma_imgui_is_k_pressed(void);
 
 #ifdef __cplusplus
 }
@@ -46,19 +43,14 @@ void luma_core_init(void);
 static bool ui_open = false;
 static bool last_k_state = false;
 
-/* =========================
-   OpenGL Hook
-   ========================= */
-
 static void (*orig_glClear)(GLbitfield mask) = NULL;
 
 /* =========================
-   Key Handling (unchanged)
+   Key Handling (ImGui)
    ========================= */
 
 static bool is_key_pressed_k() {
-    // Original logic preserved
-    return false;
+    return luma_imgui_is_k_pressed();
 }
 
 /* =========================
@@ -78,7 +70,7 @@ void glClear(GLbitfield mask) {
     last_k_state = k_pressed;
 
     if (ui_open) {
-        glColor4f(0.0f, 0.0f, 0.0f, 0.4f);
+        glColor4f(0.f, 0.f, 0.f, 0.4f);
         luma_gui_render();
     }
 
