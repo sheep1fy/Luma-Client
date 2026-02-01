@@ -28,6 +28,16 @@ static void LumaRegisterModules() {
     mgr.add(LumaCreateZoomModule());
 }
 
+/* =========================
+   C-callable init (REQUIRED)
+   ========================= */
+
+extern "C" void luma_core_init()
+{
+    // Ensure modules are registered at least once
+    LumaRegisterModules();
+}
+
 void LumaOnTick(float dt) {
     LumaRegisterModules();
     LumaGetModuleManager().tick(dt);
