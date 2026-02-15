@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <dlfcn.h>
-#include "luma_gui.h"
+#include <luma_gui.h>
 
 
 /* =========================
