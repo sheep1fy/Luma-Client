@@ -1,6 +1,7 @@
 #include "luma_gui.h"
 #include "luma_module_manager.h"
 #include "luma_config.h"
+#include "luma_hud.h"
 #include "imgui.h"
 
 /* =========================
@@ -57,4 +58,13 @@ void LumaGUIRender()
     if (ImGui::Button("Load Config")) LumaConfigLoad();
 
     ImGui::End();
+}
+
+/* =========================
+   C Wrapper for luma_linux.c
+   ========================= */
+
+extern "C" void luma_gui_render(void)
+{
+    LumaGUIRender();
 }
