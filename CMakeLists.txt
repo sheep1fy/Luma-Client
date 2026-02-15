@@ -57,3 +57,9 @@ target_compile_definitions(luma_client PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
 # 7. Link Libraries
 target_link_libraries(luma_client GLESv2 log)
+
+# 8. Add X11 for Linux builds (keyboard input detection)
+if(NOT ANDROID)
+    find_package(X11 REQUIRED)
+    target_link_libraries(luma_client ${X11_LIBRARIES})
+endif()
