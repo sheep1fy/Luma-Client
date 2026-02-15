@@ -1,7 +1,7 @@
 // src/luma_core.cpp
-#include "luma_module_manager.h"
-#include "luma_gui.h"
-#include "luma_hud.h"
+#include <luma_module_manager.h>
+#include <luma_gui.h>
+#include <luma_hud.h>
 
 // module creators
 LumaModule LumaCreateFPSModule();
