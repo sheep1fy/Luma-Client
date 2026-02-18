@@ -1,11 +1,20 @@
 // ============================================================================
-// luma_linux.c - Linux / Android OpenGL hook + Direct X11 keybind
+// luma_linux.c - SDL2 Event Hook for Wayland/X11 Compatibility
 // ============================================================================
 
 #include <stdio.h>
 #include <stdbool.h>
 #include <dlfcn.h>
+#include <string.h>
 #include "luma_gui.h"
+
+#ifdef ANDROID
+    #include <android/log.h>
+    #define LOG_TAG "LumaClient"
+    #define LUMA_LOG(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#else
+    #define LUMA_LOG(...) fprintf(stderr, "[LumaClient] " __VA_ARGS__); fprintf(stderr, "\n"); fflush(stderr)
+#endif
 
 /* =========================
    OpenGL / GLES Compatibility
@@ -19,10 +28,45 @@
     #endif
 #else
     #include <GL/gl.h>
-    // X11 for direct keyboard access on Linux
-    #include <X11/Xlib.h>
-    #include <X11/keysym.h>
 #endif
+
+/* =========================
+   SDL2 Minimal Definitions
+   ========================= */
+
+// Minimal SDL2 event structures (we don't need full SDL headers)
+typedef enum {
+    SDL_KEYDOWN = 0x300,
+    SDL_KEYUP = 0x301
+} SDL_EventType;
+
+typedef struct SDL_Keysym {
+    uint32_t scancode;
+    int32_t sym;
+    uint16_t mod;
+    uint32_t unused;
+} SDL_Keysym;
+
+typedef struct SDL_KeyboardEvent {
+    uint32_t type;
+    uint32_t timestamp;
+    uint32_t windowID;
+    uint8_t state;
+    uint8_t repeat;
+    uint8_t padding2;
+    uint8_t padding3;
+    SDL_Keysym keysym;
+} SDL_KeyboardEvent;
+
+typedef union SDL_Event {
+    uint32_t type;
+    SDL_KeyboardEvent key;
+    uint8_t padding[56];
+} SDL_Event;
+
+// SDL key codes
+#define SDLK_k 107
+#define SDLK_K 107  // Same as lowercase
 
 /* =========================
    C ↔ C++ Bridges
@@ -44,60 +88,112 @@ void luma_core_init(void);
    ========================= */
 
 static bool ui_open = false;
-static bool last_k_state = false;
 static void (*orig_glClear)(GLbitfield mask) = NULL;
+static int frame_count = 0;
+static bool first_frame_logged = false;
+static bool hook_active = false;
 
-#ifndef ANDROID
-static Display *x11_display = NULL;
-#endif
+typedef int (*SDL_PollEvent_t)(SDL_Event *event);
+static SDL_PollEvent_t orig_SDL_PollEvent = NULL;
+
+typedef int (*SDL_PeepEvents_t)(SDL_Event *events, int numevents, int action, uint32_t minType, uint32_t maxType);
+static SDL_PeepEvents_t orig_SDL_PeepEvents = NULL;
 
 /* =========================
-   Direct X11 Key Detection (Linux)
+   SDL2 Event Hooks (Wayland Compatible)
    ========================= */
 
-#ifndef ANDROID
-static bool is_key_k_pressed_x11() {
-    // Lazy init X11 connection
-    if (!x11_display) {
-        x11_display = XOpenDisplay(NULL);
-        if (!x11_display) {
-            return false;  // No X11, can't detect keys
+int SDL_PollEvent(SDL_Event *event) {
+    // Get original function
+    if (!orig_SDL_PollEvent) {
+        orig_SDL_PollEvent = (SDL_PollEvent_t)dlsym(RTLD_NEXT, "SDL_PollEvent");
+        if (!orig_SDL_PollEvent) {
+            LUMA_LOG("ERROR: Could not find SDL_PollEvent");
+            return 0;
+        }
+        LUMA_LOG("Hooked SDL_PollEvent successfully");
+    }
+    
+    // Call original
+    int result = orig_SDL_PollEvent(event);
+    
+    // Check if we got an event
+    if (result && event) {
+        // Check for K key press
+        if (event->type == SDL_KEYDOWN && event->key.keysym.sym == SDLK_k) {
+            // Check if not repeat
+            if (event->key.repeat == 0) {
+                ui_open = !ui_open;
+                LUMA_LOG("*** K KEY PRESSED (SDL2) - UI toggled to: %s ***", ui_open ? "OPEN" : "CLOSED");
+            }
         }
     }
     
-    // Query keyboard state
-    char keys[32];
-    XQueryKeymap(x11_display, keys);
-    
-    // Get keycode for 'K' key
-    KeyCode k_keycode = XKeysymToKeycode(x11_display, XK_k);
-    
-    // Check if key is pressed (bit array)
-    return (keys[k_keycode / 8] & (1 << (k_keycode % 8))) != 0;
+    return result;
 }
-#else
-// Android fallback (would need different input method)
-static bool is_key_k_pressed_x11() {
-    return false;
+
+int SDL_PeepEvents(SDL_Event *events, int numevents, int action, uint32_t minType, uint32_t maxType) {
+    // Get original function
+    if (!orig_SDL_PeepEvents) {
+        orig_SDL_PeepEvents = (SDL_PeepEvents_t)dlsym(RTLD_NEXT, "SDL_PeepEvents");
+        if (!orig_SDL_PeepEvents) {
+            return 0;
+        }
+        LUMA_LOG("Hooked SDL_PeepEvents successfully");
+    }
+    
+    // Call original
+    int result = orig_SDL_PeepEvents(events, numevents, action, minType, maxType);
+    
+    // Check events if we got any
+    if (result > 0 && events) {
+        for (int i = 0; i < result; i++) {
+            if (events[i].type == SDL_KEYDOWN && events[i].key.keysym.sym == SDLK_k) {
+                if (events[i].key.repeat == 0) {
+                    ui_open = !ui_open;
+                    LUMA_LOG("*** K KEY PRESSED (SDL_PeepEvents) - UI toggled to: %s ***", ui_open ? "OPEN" : "CLOSED");
+                }
+            }
+        }
+    }
+    
+    return result;
 }
-#endif
 
 /* =========================
-   Hooked glClear
+   Hooked glClear (for rendering)
    ========================= */
 
 void glClear(GLbitfield mask) {
+    frame_count++;
+    
+    // Log first frame
+    if (!first_frame_logged) {
+        LUMA_LOG("======================================");
+        LUMA_LOG("Luma Client glClear hook ACTIVE!");
+        LUMA_LOG("Using SDL2 event hooking for keys");
+        LUMA_LOG("Press 'K' to toggle menu");
+        LUMA_LOG("======================================");
+        first_frame_logged = true;
+        hook_active = true;
+    }
+    
+    // Log status every 5 seconds
+    if (frame_count % 300 == 0) {
+        LUMA_LOG("Frame %d - Hook active, UI: %s, SDL hooked: %s", 
+                 frame_count, 
+                 ui_open ? "OPEN" : "CLOSED",
+                 orig_SDL_PollEvent ? "YES" : "NO");
+    }
+    
+    // Get original glClear
     if (!orig_glClear) {
-        orig_glClear = dlsym(RTLD_NEXT, "glClear");
-        if (!orig_glClear) return;
+        orig_glClear = (void (*)(GLbitfield))dlsym(RTLD_NEXT, "glClear");
+        if (!orig_glClear) {
+            LUMA_LOG("ERROR: Could not find original glClear");
+            return;
+        }
     }
-
-    // Detect K key press (edge-triggered)
-    bool k_pressed = is_key_k_pressed_x11();
-    if (k_pressed && !last_k_state) {
-        ui_open = !ui_open;
-    }
-    last_k_state = k_pressed;
 
     // Render GUI if open
     if (ui_open) {
@@ -105,6 +201,7 @@ void glClear(GLbitfield mask) {
         luma_gui_render();
     }
 
+    // Call original
     orig_glClear(mask);
 }
 
@@ -114,7 +211,12 @@ void glClear(GLbitfield mask) {
 
 __attribute__((constructor))
 static void luma_init() {
+    LUMA_LOG("======================================");
+    LUMA_LOG("Luma Client v2.0.0 SDL2 - Initializing");
+    LUMA_LOG("Wayland/X11 compatible input hooking");
+    LUMA_LOG("======================================");
     luma_core_init();
+    LUMA_LOG("Core initialization complete");
 }
 
 /* =========================
@@ -123,10 +225,6 @@ static void luma_init() {
 
 __attribute__((destructor))
 static void luma_cleanup() {
-#ifndef ANDROID
-    if (x11_display) {
-        XCloseDisplay(x11_display);
-        x11_display = NULL;
-    }
-#endif
+    LUMA_LOG("Luma Client shutting down...");
+    LUMA_LOG("Total frames rendered: %d", frame_count);
 }
